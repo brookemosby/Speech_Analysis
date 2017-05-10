@@ -1,7 +1,6 @@
 import numpy as np
 import peakutils as pu
 import warnings
-from matplotlib import pyplot as plt
 warnings.filterwarnings("ignore")
 
 class Signal():
