@@ -29,9 +29,9 @@ class Signal():
         
         #checking to make sure values are valid                         
         if Nyquist_Frequency < max_pitch:
-            raise ValueError( "The maximum pitch cannot be greater than the Nyquist Frequency." )
+            raise ValueError( "The maximum pitch cannot be greater than the Nyquist Frequency." )#do we want to raise a ValueError, or just change max_pitch to nyguist frequency and print message?
         if min_pitch == 0:
-            raise ValueError( "The minimum pitch cannot be zero." ) #double check, we may not want to raise a value error.
+            raise ValueError( "The minimum pitch cannot be zero." ) #double check, we may not want to raise a value error, maybe just change window_len to length of signal in this case
             
         #filtering by Nyquist Frequency (preproccesing step)
         upper_bound = .95 * Nyquist_Frequency
@@ -52,7 +52,7 @@ class Signal():
         #then segmenting signal
         window_len = 3.0 / min_pitch
         frame_len = window_len / time_step
-        num_frames = int( len( signal ) / frame_len + .5 )
+        num_frames = max( 1, int( len( signal ) / frame_len + .5 ) ) #there has to be at least one frame
         segmented_signal = [ signal[ int( i * frame_len ) : int( ( i+1 ) * frame_len ) ] for i in range( num_frames + 1 ) ]
         
         #plotting the segments on the signal
@@ -113,7 +113,7 @@ class Signal():
                 time_array = np.linspace( time_begin, time_end, len( r_x ) ) 
                 
                 #do we want to multiply by hanning window to window the interpolation (as done in paper)?
-                vals = np.nan_to_num( sinc_interp( r_x, time_array, np.linspace( time_begin, time_end, len( r_x ) * 2 ) ) ) * np.hanning( len( r_x ) * 2 ) 
+                vals = np.nan_to_num( sinc_interp( r_x, time_array, np.linspace( time_begin, time_end, len( r_x ) * 8 ) ) ) #* np.hanning( len( r_x ) * 2 ) 
                 time_array = np.linspace( time_begin, time_end, len( vals ) )
                 
                 plt.subplot( 223 )#??
@@ -183,6 +183,7 @@ class Signal():
             return total_list
         
         #after we have created a list of paths we will need to iterate through each list, and create a corresponding list of the cost for each path, then choose the path with the lowest cost
+        
         all_paths = find_all_paths( [ [] for x in range( total_paths ) ], 0 )
         
         def transition_cost( path ):
@@ -206,12 +207,10 @@ class Signal():
         
         total_cost = [ transition_cost( path ) - sum_strengths( path ) for path in all_paths ]
         best_path = all_paths[ total_cost.index( min( total_cost ) ) ]
-        print( best_path )
-        print( cands_for_all_frames )
+        
         #we iterate through the best path found, and give the maximum of a list of the places that correspond to the best values
         pos = np.arange( len( best_path ) )  
         best_time = max([ cands_for_all_frames [ 1 : : 2 ][ int( p ) ][ index ][ 0 ] for index, p in zip( best_path, pos ) ])
-        #ok heres where we are  running into a problem, once the minimum pitch goes below a certain frequency we are getting an empty list... figure out why.
         
         #return corresponding frequency to the maximum time, aka the minimum frequency
         if best_time == 0:
@@ -220,7 +219,9 @@ class Signal():
             return  1. / best_time
     
         #ok so what is wrong right now?
-        #a-returning the wrong thing, path should line up with number of frames, we are sometimes getting an empty list ie min freq=10, that shouldnt happen.
+        #not returning correct values, multiples of correct value
+        #thoughts, increase values of interpolation, multiply by gaussian window....
+        #the problem is it is picking later peaks that are repetitions of the original peak.
         
         #write test code
         #then add in HNR (shouldn't be too hard)
