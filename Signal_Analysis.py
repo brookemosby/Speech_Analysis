@@ -1,214 +1,179 @@
 import numpy as np
-import peakutils as pu
-import warnings
-warnings.filterwarnings("ignore")
+from scipy import signal
 
 class Signal():
-    def __init__(self, signal):
+    def __init__( self, signal, rate ):
         self.signal = signal
-        self.F_0 = None
-        #maybe include sample rate in here ... no need to pass into functions
+        self.rate = rate
         
-    def get_F_0(self, min_pitch, max_pitch, voicing_threshold, silence_threshold, 
-                time_step = .01, max_num_candidates = 4, octave_cost = .01, voiced_unvoiced_cost = 0, octave_jump_cost = 0, HNR = False ):
+    def get_F_0( self, min_pitch=90, max_pitch=1000, max_num_candidates = 2, octave_cost = .01, HNR = False ):
         """
-        Insert awesome description here
+        Compute Fundamental Frequency.
+        Algorithm uses Fast Fourier Transform (FFT) to filter out values higher than the Nyquist Frequency. 
+        Then it segments the signal into frames containing at least 3 periods of the minimum pitch.
+        For each frame it then again uses FFT to calculate normalized autocorrelation of the signal. 
+        After autocorrelation is calculated it is upsampled with sinc interpolation, and smoothed to find 
+        the maxima values of the interpolation. After these values have been chosen the best candidate
+        for the fundamental frequency is picked and then returned.
+        This algorithm is adapted from 
+        http://www.fon.hum.uva.nl/david/ba_shs/2010/Boersma_Proceedings_1993.pdf
+        
+        Args:
+            min_pitch (float): minimum value to be returned as pitch, cannot be less than or equal to zero
+            max_pitch (float): maximum value to be returned as pitch, cannot be greater than Nyquist Frequency
+            max_num_candidates (int): maximum number of candidates to be considered for each frame, unvoiced candidate (i.e. fundamental frequency equal to zero) is always considered.
+            octave_cost (float): value between 0 and 1 that aids in determining which candidate for the frame is best. Higher octave_cost favors higher frequencies.
+            HNR (bool): boolean determining if HNR is calculated and returned. Defaulted to False.
+            
+        Returns:
+            float: The fundamental frequency of the signal +/- 10 hz.
+            
+        Raises:
+            #insert ValueErrors here
+        
+        Example:
+            from scipy.io import wavfile as wav
+            rate, wave= wav.read( 'example_audio_file.wav' )
+            sig = Signal( wave, rate )
+            sig.get_F_0()
+            
         """
         #end goal is to include a variable for HNR =True/False then we can do it all in one function and then get_HNR would call this function passing in HNR=True
         
+        time_step=1./self.rate
         total_time = time_step * len( self.signal )
-        Nyquist_Frequency = 1. / ( time_step * 2 )#if we decide to use sample rate then we would change this to nf=sample_rate/2
+        Nyquist_Frequency = 1. / ( time_step * 2 )
         
-        #checking to make sure values are valid                         
+        #checking to make sure values are valid
+        #check for type errors of values passed in 
+        if not np.isscalar( min_pitch ) or not np.isscalar( max_pitch ) or type( max_num_candidates ) != int or type( octave_cost ) != float or type( HNR ) != bool:
+            raise TypeError( "min_pitch, max_pitch and octave_cost must be scalars, max_num_candidates must be an int and HNR must be a bool." )                      
         if Nyquist_Frequency < max_pitch:
-            raise ValueError( "The maximum pitch cannot be greater than the Nyquist Frequency." )#do we want to raise a ValueError, or just change max_pitch to nyguist frequency and print message?
-        if min_pitch == 0:
-            raise ValueError( "The minimum pitch cannot be zero." ) #double check, we may not want to raise a value error, maybe just change window_len to length of signal in this case
+            raise ValueError( "The maximum pitch cannot be greater than the Nyquist Frequency." )
+        if min_pitch <= 0:
+            raise ValueError( "The minimum pitch cannot be equal or less than zero." )
+        if max_num_candidates <2 :
+            raise ValueError( "The minimum number of candidates is 2.")
+        if octave_cost < 0 or octave_cost > 1:
+            raise ValueError( "octave_cost must be between 0 and 1" )
             
         #filtering by Nyquist Frequency (preproccesing step)
         upper_bound = .95 * Nyquist_Frequency
         fft_signal = np.fft.fft( self.signal )
-        mask = fft_signal < upper_bound
-        fft_signal *= mask
-        signal = np.fft.ifft( fft_signal )
+        fft_signal = fft_signal * ( fft_signal < upper_bound )
+        sig = np.fft.ifft( fft_signal )
         
-        global_peak = max( abs( signal ) )
-
-        
-        
-        #note->if HNR: then put HNR window len in list with regular window len and do same for both(iterate through list) so code duplication is reduced
-
 
         #finding the window_len in seconds, finding frame len (as an integer of how many points will be in a window), finding number of frames/ windows that we will need to segment the signal into
         #then segmenting signal
+        #if HNR: window_len_HNR=6.0/min_pitch
+        
         window_len = 3.0 / min_pitch
         frame_len = window_len / time_step
-        num_frames = max( 1, int( len( signal ) / frame_len + .5 ) ) #there has to be at least one frame
-        segmented_signal = [ signal[ int( i * frame_len ) : int( ( i+1 ) * frame_len ) ] for i in range( num_frames + 1 ) ]
-
-    
-        #intializing variables before for loop so they are not localized 
-        cands_for_all_frames = [ ]
+        num_frames = max( 1, int( len( sig ) / frame_len + .5 ) ) #there has to be at least one frame
+        segmented_signal = [ sig[ int( i * frame_len ) : int( ( i + 1 ) * frame_len ) ] for i in range( num_frames + 1 ) ]
         
-        #these functions are defined out side of the loop, so that they won't be defined multiple times
+        if len( segmented_signal[ len( segmented_signal ) - 1 ] ) == 0:
+            segmented_signal = segmented_signal[ : -1 ]
+            
         def estimated_autocorrelation( x ):
-            """
-            Accepts segment finds autocorrelation of a segment, returns result
-            """
-            n = len( x )
-            variance = x.var()
-            x = x - x.mean()
-            r = np.correlate( x, x, mode = 'full' )[ -n: ]
-            result = r / ( variance * ( np.arange( n, 0, -1 ) ) )
-            return result
+            N = len( x )
+            x = np.hstack( ( x, np.zeros( int( N / 2 ) ) ) )
+            x = np.hstack( ( x, np.zeros( 2 ** ( int( np.log2( N ) + 1 ) ) - N ) ) )            
+            s = np.fft.fft( x )
+            a = np.real( np.fft.fft( s * np.conjugate( s ) ) )
+            a = a[ :N ]
+            a /= a[ 0 ]
+            return a
+        
         def sinc_interp( x, s, u ):
             """
             Interpolates x, sampled at "s" instants
             Output y is sampled at "u" instants ("u" for "upsampled")
             """
             
-            if len( x ) != len( s ):
-                raise Exception( 'x and s must be the same length' )
-            
             # Find the period    
             T = s[ 1 ] - s[ 0 ]
             sincM = np.tile( u, ( len( s ), 1 ) ) - np.tile( s[ :, np.newaxis ], ( 1, len( u ) ) )
             y = np.dot( x, np.sinc( sincM / T ) )
             return y
-        def gauss_window( t, T ):
-            if t < -.5 * T or t > 1.5 * T:
-                return 0
-            else:
-                return ( np.e**( -12 * ( t / T -.5 )**2 ) - np.e**( -12 ) ) / ( 1 - np.e**( -12 ) )
-            
-        #this for loop calculates maxima of autocorrelation for each segment.
-        for index in range( len( segmented_signal ) ):
-            #this is to ignore the occasional empty segments (when the signal can be segmented into equal parts it leaves 1 empty array at the end)
-            if len( segmented_signal[ index ] ) == 0:
-                break
-            
-            else:
-                #finding where the time begins and ends for each segmentso that we can create time domains easier
-                time_begin, time_end = index * window_len, min( ( index + 1 ) * window_len, total_time )
-                window_len = time_end - time_begin
-                
-                candidate_strength = [ ]
-                local_peak = max( abs( segmented_signal[ index ] ) )
-                
-                segment = segmented_signal[ index ]
-                r_x = estimated_autocorrelation( segment )
-                
-                time_array = np.linspace( time_begin, time_end, len( r_x ) ) 
-                
-                #do we want to multiply by hanning window to window the interpolation (as done in paper)?
-                vals = np.nan_to_num( sinc_interp( r_x, time_array, np.linspace( time_begin, time_end, len( r_x ) *8 ) ) )  
-                time_array = np.linspace( time_begin, time_end, len( vals ) )
-                
-                if len( vals.nonzero()[ 0 ] ) != 0:          
-                    #pu.indexes returns the indexes of peaks above the normalized threshold of .5
-                    indexes = pu.indexes( vals, .5 )
-                    maxima_places, maxima_values = time_array[ indexes ], vals[ indexes ]
-                    max_place_possible = 1. / min_pitch
-                    min_place_possible = 1. / max_pitch
-                    
-                    #deleting maxima that don't yield a frequency between min and max pitch
-                    top_vals_elim = maxima_places[ maxima_places < max_place_possible ]
-                    corrs_maxima_vals = maxima_values[ maxima_places < max_place_possible ]
-                    maxima_places = top_vals_elim[ top_vals_elim > min_place_possible ]
-                    maxima_values = corrs_maxima_vals[ top_vals_elim > min_place_possible ]
-                    
-                    #creating a list of (index, strengths) where index indicates the index in maxima_places that corresponds to the strength          
-                    strengths = [ val - octave_cost * np.log2( min_pitch * place ) for place, val in zip( maxima_places, maxima_values ) ]
-                    indexes_with_vals = [ ( idx, i ) for idx, i in enumerate( strengths ) ]
-                    highest_vals = sorted( indexes_with_vals, reverse = True , key = lambda i:i[ 1 ] )
-                    
-                    #the number being added below indicates the number of candidates following it, for that specific frame. this helps when computing the cost.
-                    if len( highest_vals ) < max_num_candidates - 1 :
-                        cands_for_all_frames.append( len( highest_vals ) + 1 )
-                    else:
-                        cands_for_all_frames.append( max_num_candidates )
-                      
-                    #creating a list of candidates (including the unvoiced candidate)    
-                    candidate_strength = [ ( maxima_places[ i[ 0 ] ], i[ 1 ] ) for i in highest_vals[ :max_num_candidates-1 ] ]
-                    unvoiced_strength = voicing_threshold + max( 0, 2 - ( ( local_peak ) / float( global_peak ) ) / ( ( silence_threshold ) / ( 1. + voicing_threshold ) ) )
-                    candidate_strength.append( [ 0, unvoiced_strength ] ) #unvoiced candidate and strength are added to dictionary
+        
+        def find_max( arr, time_array ):
+            maxima_values = []
+            maxima_places = []
+            partitioned_arr = []
+            index = 0
+            while index < len( arr ) and len( partitioned_arr ) < max_num_candidates :
+                one_peak = []
+                if arr[ index ] > 0:
+                    while index < len( arr ) and arr[ index ] > 0:
+                        one_peak.append( arr[ index ] )
+                        index += 1
+                    if max( one_peak ) > .2:
+                        partitioned_arr.append( one_peak )
                 else:
-                    #this addresses the case of an all zero array
-                    unvoiced_strength = voicing_threshold + max( 0, 2 - ( ( local_peak ) / float( global_peak ) ) / ( ( silence_threshold ) / ( 1. + voicing_threshold ) ) )
-                    cands_for_all_frames.append( 1 )
-                    candidate_strength.append( [ 0, unvoiced_strength ] )
-                    
-                cands_for_all_frames.append( candidate_strength )
+                    while index < len( arr ) and arr[ index ] <= 0:
+                        index += 1
+            for part in partitioned_arr:
+                maxima_values.append( max( part ) )
+                maxima_places.append( float( time_array[ np.argwhere( arr == max( part ) ) ] ) )
+            return maxima_values, maxima_places
         
-        #finding total number of paths possible based off of number of candidates
-        total_paths = 1
-        for x in cands_for_all_frames[ 0 : : 2 ]:
-            total_paths *= x
+        best_cands = []
+        
+        for index in range( len( segmented_signal ) ):
+            time_begin, time_end = index * window_len, min( ( index + 1 ) * window_len, total_time )
+            window_len = time_end - time_begin
+            
+            segment = segmented_signal[ index ]
+            segment = segment - segment.mean()
+            segment *= np.hanning( len( segment ) )
+            r_a = estimated_autocorrelation( segment )
+            r_w = estimated_autocorrelation( np.hanning( len( segment ) ) )
+            r_x = r_a/r_w
+            r_x = r_x[ np.isfinite( r_x ) ]
+            r_len = len( r_x )
+            
+            time_array = np.linspace( 0, window_len, r_len ) 
+            vals = np.nan_to_num( sinc_interp( r_x * np.hstack( ( np.ones( int( r_len / 3 ) ), np.zeros( r_len - int( r_len / 3 ) ) ) ), time_array, np.linspace( 0, window_len, r_len *2 ) ) )
+            vals = signal.savgol_filter( vals, 5, 2 )
+            vals = vals * ( vals > np.zeros( len( vals ) ) )
+            time_array = np.linspace( 0, window_len, len( vals ) )
+            
+            if len( vals.nonzero()[ 0 ] ) != 0:
+                if np.std( vals ) > .15:
+                    maxima_values, maxima_places = find_max( vals, time_array )
+                    maxima_places = np.array( maxima_places )
+                    maxima_values = np.array( maxima_values )
+                    max_place_possible = min( 1. / min_pitch, window_len / 2 )
+                    min_place_possible = 1. / max_pitch
+                    top_vals_elim = maxima_places[ maxima_places <= max_place_possible ]
+                    corrs_maxima_vals = maxima_values[ maxima_places <= max_place_possible ]
+                    maxima_places = top_vals_elim[ top_vals_elim >= min_place_possible ]
+                    maxima_values = corrs_maxima_vals[ top_vals_elim >= min_place_possible ]
+                    
+                    maxima_places = maxima_places[ maxima_values > .4 ]
+                    maxima_values = maxima_values[ maxima_values > .4 ]
 
-        def find_all_paths( paths, layer ):
-            """This is a recursive function that returns the indices of all possible paths corresponding to the list cans_for_all_frames."""
-            if layer == num_frames:
-                return paths
-            else:
-                for i in range( len( paths ) ):
-                    num = len( paths ) / cands_for_all_frames[ 0 : : 2 ][ layer ]
-                    paths[ i ].append( int( i / num ) )
-                total_list = []
-                for x in range( cands_for_all_frames[ 0 : : 2 ][ layer ] ):
-                    total_list += find_all_paths( paths[ int( x * num ) : int( ( x + 1 ) * num ) ], layer + 1 )
-            return total_list
-        
-        #after we have created a list of paths we will need to iterate through each list, and create a corresponding list of the cost for each path, then choose the path with the lowest cost
-        
-        all_paths = find_all_paths( [ [] for x in range( total_paths ) ], 0 )
-        
-        def transition_cost( path ):
-            """Finds transition cost for a specific path, returns a value"""
-            sum_total = 0
-            
-            for x in range( len( path ) - 1 ):
-                if path[ x ] == 0 and path[ x+1 ] == 0:
-                    pass
-                
-                elif path[ x ] == 0 or path[ x + 1 ]==0:
-                    sum_total += voiced_unvoiced_cost
-                    
-                elif path[ x ] != 0 and  path[ x + 1 ] != 0:
-                    sum_total += octave_jump_cost * abs( np.log2( path[ x ] / path[ x + 1 ] ) )
-                    
-            return sum_total
-        
-        def sum_strengths( path ):
-            """ sums all the strengths of a path of different frequencies, returns resulting value."""
-            sum_total = 0
-            
-            for x in range( len( path ) ):
-                sum_total += cands_for_all_frames[ 1 : : 2 ][ x ][ path[ x ] ][ 1 ]
-                
-            return sum_total
-        
-        total_cost = [ transition_cost( path ) - sum_strengths( path ) for path in all_paths ]
-        best_path = all_paths[ total_cost.index( min( total_cost ) ) ]
-        
-        #we iterate through the best path found, and give the maximum of a list of the places that correspond to the best values
-        pos = np.arange( len( best_path ) )  
-        best_time = max([ cands_for_all_frames [ 1 : : 2 ][ int( p ) ][ index ][ 0 ] for index, p in zip( best_path, pos ) ])
-        
-        #return corresponding frequency to the maximum time, aka the minimum frequency
-        if best_time == 0:
+                    if len( maxima_values ) > 0:
+                        strengths = [ val - octave_cost * np.log2( min_pitch * place ) for place, val in zip( maxima_places, maxima_values ) ]
+                        best_cands.append( maxima_places[ np.argmax( strengths ) ] )
+
+        if len( best_cands ) == 0:
             return 0
-        else:
-            return  1. / best_time
-    
-        #ok so what is wrong right now?
-        #not returning correct values, multiples of correct value
-        #thoughts, increase values of interpolation, multiply by gaussian window....
-        #the problem is it is picking later peaks that are repetitions of the original peak.
         
-        #write test code
+        best_cands = np.array( best_cands )
+        return 1 / sorted( best_cands )[ int( .8 * len( best_cands ) ) ]
+        
+        
+    
         #then add in HNR (shouldn't be too hard)
-        # get code put up github/travis/coveralls...
-        #make a python installable package      
-            
-        #if HNR: window_len_HNR=6.0/min_pitch
+        #get code put up github/travis/coveralls...   
+        #TODO:
+        #clone repo, put on github-> goes in super ai->afx->features (in my fork, ask when ready to merge fork)
+        #if everything is similar enough can be put in one class, else seperate it into different classes/files
+        #travis and coveralls, he will get a key for me to put it on privately
+        #Documentation like crazy, should get ex. from Andrew
+        #keep value errors
+        
         
