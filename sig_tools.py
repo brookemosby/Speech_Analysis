@@ -1,5 +1,4 @@
 import numpy as np
-from scipy import linalg as la
 #TODO: ***GO ON GITHUB LOOK AT EXAMPLES OF CLASS CODE, MAY NOT WANT EVERYTHING IN ONE GARGANTUAN FILE***
 #TODO: ***START OPTIMIZNG CODE. BE CAREFUL AND TEST OFTEN CODE IS DELICATE***
 
@@ -55,55 +54,6 @@ def sinc_interp( x, s, u ):
     #This calculates interpolated array
     y = np.dot( x, np.sinc( sincM / T ) )
     return y
-
-def cont_sinc(taus,r_x,window_len):
-    #nans, also limited window can be good
-    delta_tau=taus[1]-taus[0]
-    r_tau=np.zeros(len(taus))
-    for tau in taus:
-        n_l=int(tau/delta_tau)
-        n_r=n_l+1
-        phi_l=tau/delta_tau-n_l
-        phi_r=1-phi_l
-        N=min(500, int(((window_len/2)/delta_tau)-n_l))
-        total_sum=0
-        if N>0:
-            for n in range(N):
-    
-                n+=1
-                try:
-                    if phi_l+n-1 !=0:
-                        sum_1= r_x[n_r-n]*np.sin(np.pi*(phi_l+n-1))/(np.pi*(phi_l+n-1))*(1+np.cos((np.pi*(phi_l+n-1))/phi_l+N))
-                    else: sum_1=0
-                except:
-                    sum_1=0
-                try:
-                    if phi_r+n-1!=0:
-                        sum_2= r_x[n_l+n]*np.sin(np.pi*(phi_r+n-1))/(np.pi*(phi_r+n-1))*(1+np.cos((np.pi*(phi_r+n-1))/phi_r+N))
-                    else: sum_2=0
-                except:
-                    sum_2=0
-                total_sum=total_sum+sum_1+sum_2
-            r_tau[int(tau/delta_tau)]=total_sum/2.0
-    return r_tau
-def cont_sinc_1(taus,r_x):
-    #nans, also limited window can be good
-    delta_tau=taus[1]-taus[0]
-    r_tau=np.zeros(len(taus))
-    N=min(5000, int(len(r_x)/2))
-    r_x=np.hstack((np.zeros(N),r_x,np.zeros(len(r_x)*2)))
-    for tau in taus:
-        index=int(tau/delta_tau+.5)
-        lower_bound=index
-        upper_bound=index+2*N+1
-        r_vals=r_x[lower_bound:upper_bound]
-        vals=np.hstack((np.linspace(N,0,N+1),np.linspace(1,N,N)))
-        sinc_vals=np.sinc(vals)
-        window=np.hanning(2*N+1)
-        r_tau[index]=np.sum(r_vals*sinc_vals*window)
-    return r_tau
-
-
 
 def find_max( arr, time_array, max_num_candidates ):
     """

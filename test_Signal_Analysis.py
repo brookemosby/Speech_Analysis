@@ -76,7 +76,7 @@ class Test_Signal():
         def testing_sig( rate, wave, true_HNR ):
             sig = Signal( wave, rate )
             est_HNR = sig.get_HNR()
-            assert abs( est_HNR - true_HNR ) < 1, 'Estimated frequency not within allotted range.'
+            assert abs( est_HNR - true_HNR ) < 1, 'Estimated HNR not within allotted range.'
         wave_function = lambda x, frequency: np.sin( 2 * np.pi * x * frequency )
         domain = np.linspace( 0, 2, 10000 )
         rate = 10000
@@ -96,7 +96,6 @@ class Test_Signal():
         #These cases test that the calculated answer is within an acceptable range (+/- 1 dB)
         rate, wave = wavfile.read( '03-01-01-01-01-01-10.wav' )
         testing_sig( rate, wave, 12.195 )
-        
         rate, wave = wavfile.read( '03-01-06-01-01-02-04.wav' )
         testing_sig( rate, wave, 8.589 )
         

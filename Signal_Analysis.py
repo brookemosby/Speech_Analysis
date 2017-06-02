@@ -1,13 +1,8 @@
 import sig_tools as st
 import numpy as np
 from matplotlib import pyplot as plt
-import peakutils as pu
-from scipy import signal as ss
 #TODO: update github pages so that I can post other things on there besides just titanic
-#TODO: look at HNR, attempt cepstrum one more time, also look at auto without windowing some
-#more to see if there is more I can do to edit/refine that method... doesn't seem to get
-#above 13 ish dB
-#TODO:look at using gaussian window for HNR
+
 class Signal():
     def __init__( self, signal, rate ):
         self.signal = signal
@@ -136,7 +131,7 @@ class Signal():
         #initializing list of candidates for F_0
         best_cands = []
         corrs_cand_vals = []
-        bestest=0
+        bestest=[]
         for index in range( len( segmented_signal ) ):
             time_begin, time_end = index * window_len, min( ( index + 1 ) * window_len, total_time )
             window_len = time_end - time_begin
@@ -151,10 +146,16 @@ class Signal():
             5. Divide the autocorrelation of the windowed signal by autocorrelation of the window
                     to estimate the autocorrelation of the segment (r_x)
             """
+            plt.plot(np.linspace(0,window_len,len(segment)),segment)
+            
             segment = segment - segment.mean()
-            segment *= np.hanning( len( segment ) )
+            if HNR:
+                window = st.gauss_window(len(segment),window_len,10)
+            else:
+                window = np.hanning( len( segment ) )
+            segment *= window
             r_a = st.estimated_autocorrelation( segment )
-            r_w = st.estimated_autocorrelation( np.hanning( len( segment ) ) )
+            r_w = st.estimated_autocorrelation( window )
             r_x = r_a / r_w
             
             #eliminating points in the autocorrelation that are not finite (cause by dividing by 
@@ -165,10 +166,13 @@ class Signal():
             #creating an array of the points in time corresponding to our sampled autocorrelation
             #of the signal (r_x)
             time_array = np.linspace( 0, window_len, r_len )
+            
 
             #Only consider the first half of the autocorrelation because for lags longer than a 
             #half of the window length, it becomes less reliable there for signals with few 
             #periods per window, stated in algorithm pg. 104.
+            
+            
             first_half = np.ones( int( r_len / 2 ) )
             second_half = np.zeros( r_len - int( r_len / 2 ) )
             limited_window = np.hstack( ( first_half, second_half  ) )
@@ -182,9 +186,14 @@ class Signal():
             to pick the best peak that represents the frequency.
             """
             #we down sample the signal using sinc_interpolation, and eliminate any nan
-            down_sampled_time_array = np.linspace( 0, window_len, r_len /2 )
-            vals = np.nan_to_num( st.sinc_interp( r_x , time_array, down_sampled_time_array ) )
-            time_array = down_sampled_time_array
+            if HNR:
+                up_sampled_time_array = np.linspace( 0, window_len, r_len * 2 )
+                vals = np.nan_to_num( st.sinc_interp( r_x , time_array, up_sampled_time_array ) )
+                time_array = up_sampled_time_array
+            else:
+                down_sampled_time_array = np.linspace( 0, window_len, r_len / 2 )
+                vals = np.nan_to_num( st.sinc_interp( r_x , time_array, down_sampled_time_array ) )
+                time_array = down_sampled_time_array
             
             if len( vals.nonzero()[ 0 ] ) != 0:
                 #finding maximizers, and maximums and eliminating values that don't produce a 
@@ -224,28 +233,19 @@ class Signal():
                 candidate per frame and choose the one of the candidates of highest value.
                 """
                 strengths=[]
-                max_val=vals[0]
-                vals=vals/max_val                
-                all_maxima,all_places=st.find_max(vals,time_array,2)
-
-                corrs_maxima_vals = all_maxima[ all_places <= max_place_possible ]
-                top_vals_elim = all_places[ all_places <= max_place_possible ]
-
-                all_maxima = corrs_maxima_vals[ top_vals_elim >= min_place_possible ]
-                all_places = top_vals_elim[ top_vals_elim >= min_place_possible ]
-                
-                all_places=all_places[all_maxima<1]
-                all_maxima=all_maxima[all_maxima<1]
-
+    
                 #plt.plot(time_array,vals)
+                all_maxima,all_places=st.find_max(vals,time_array,np.inf)
+                all_maxima/=all_maxima[0]
+                all_maxima=all_maxima[1:]
+                first_one=np.where(all_maxima>=.99)[0]
+                if len(first_one)>0:
+                    all_maxima=all_maxima[:first_one[0]-1]
+                    
+                all_maxima=all_maxima[all_maxima>.6]
                 
-                #plt.plot(all_places,all_maxima,'o')
-                #plt.plot(time_array,np.ones(len(time_array))*.879)
-               
-                #plt.show()
-                if len(all_maxima)>0:
-                    if max(all_maxima)>bestest:
-                        bestest=max(all_maxima)
+                if len(all_maxima)>1 :
+                    bestest.append(max(all_maxima))
                     
                 if len( maxima_values ) > 0:
                     """
@@ -274,8 +274,8 @@ class Signal():
             #i.e. return 0.
             return 0
         if HNR:
-            #TODO: ***LEARN MORE ABOUT HNR TO DETERMINE HOW TO CALCULATE IT***
-            pass
+            bestest=sorted(bestest)[-1]
+            return 10*np.log10(bestest/(1-bestest))
         """
         Return the candidate that is in the 85th percentile, instead of the highest valued 
         candidates, which are more often than not anomalies caused by changes in amplitude in the
@@ -322,11 +322,9 @@ class Signal():
             
         """
         #TODO:***need to update test_Signal_Analysis to get 100% coverage***
-        #TODO: need ground values for HNR
         
         return self.get_F_0( min_pitch = min_pitch, silence_threshold = silence_threshold, HNR=True )
         #get code put up github/travis/coveralls...   
         #TODO: clone repo, put on github-> goes in super ai->afx->features (in my fork, ask when ready to merge fork)
         #if everything is similar enough can be put in one class, else seperate it into different classes/files
         #TODO: travis and coveralls, he will get a key for me to put it on privately, which I don't have yet so maybe don't work on this.
-        #TODO:write tests for sig_tools
