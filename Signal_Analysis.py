@@ -1,15 +1,18 @@
 import sig_tools as st
 import numpy as np
-from matplotlib import pyplot as plt
 #TODO: update github pages so that I can post other things on there besides just titanic
-
+#TODO: look and see if we want this in a class format. i.e. are there interdependicies bet
+#ween functions, reread jitter and other algos I need to write.
+#also look more at HNR-> Its giving a correct value, but I get the feeling
+#that tested on other audio files it wouldn't be as robust
+#need to redo API doc
+#need to get 100% signal testing
 class Signal():
     def __init__( self, signal, rate ):
         self.signal = signal
         self.rate = rate
-        #min_pitch = 75...
     def get_F_0( self, min_pitch = 75, max_pitch = 550, max_num_candidates = 2, octave_cost = .01, 
-                voicing_threshold = .4, silence_threshold = .01, HNR = False):
+                voicing_threshold = .4, silence_threshold = .01):
         """
         Compute Fundamental Frequency (F_0).
         Algorithm uses Fast Fourier Transform (FFT) to filter out values higher than the Nyquist
@@ -38,13 +41,10 @@ class Signal():
             silence_threshold (float): Used to calculate strength of voiceless candidate, the 
                               higher the value the more likely the F_0 will be returned as 
                               voiceless.
-            HNR (bool): Determines if Harmonics-to-Noise ratio is returned
-            
         Returns:
             float: The F_0 of the signal +/- 2 hz.
             
         Raises:
-            TypeError: HNR must be a bool
             TypeError: min_pitch, max_pitch, and max_num_candidates must be an int, octave_cost,
                         silence_threshold, and voicing_threshold must be a float.
             ValueError: The maximum pitch cannot be greater than the Nyquist Frequency.
@@ -70,31 +70,23 @@ class Signal():
         
         #checking to make sure values are valid
         #check for type errors of values passed in 
-        if type(HNR) != bool:
-            raise TypeError( "HNR must be a bool." )
-        if not HNR:    
-            if ( type( min_pitch ) != int or 
-                 type( max_pitch ) != int or 
-                 type( max_num_candidates ) != int or 
-                 type( octave_cost ) != float or 
-                 type( silence_threshold ) != float or
-                 type( voicing_threshold ) != float ):
-                
-                raise TypeError( "min_pitch, max_pitch, and max_num_candidates must be an int, octave_cost, silence_threshold, and voicing_threshold must be a float" )   
-                   
-            if Nyquist_Frequency < max_pitch:
-                raise ValueError( "The maximum pitch cannot be greater than the Nyquist Frequency." )
-            if max_num_candidates <2 :
-                raise ValueError( "The minimum number of candidates is 2.")
-            if octave_cost < 0 or octave_cost > 1:
-                raise ValueError( "octave_cost must be between 0 and 1." )            
-            if voicing_threshold < 0 or voicing_threshold> 1:
-                raise ValueError( "voicing_threshold must be between 0 and 1." ) 
-        else:
-            if type(min_pitch) != int or type(silence_threshold)!=float:
-                raise ValueError( "min_pitch must be an int, and silence_threshold must be a float." )
-
-        #these values need to be checked for F_0 and HNR calculations   
+        if ( type( min_pitch ) != int or 
+             type( max_pitch ) != int or 
+             type( max_num_candidates ) != int or 
+             type( octave_cost ) != float or 
+             type( silence_threshold ) != float or
+             type( voicing_threshold ) != float ):
+            
+            raise TypeError( "min_pitch, max_pitch, and max_num_candidates must be an int, octave_cost, silence_threshold, and voicing_threshold must be a float" )   
+               
+        if Nyquist_Frequency < max_pitch:
+            raise ValueError( "The maximum pitch cannot be greater than the Nyquist Frequency." )
+        if max_num_candidates <2 :
+            raise ValueError( "The minimum number of candidates is 2.")
+        if octave_cost < 0 or octave_cost > 1:
+            raise ValueError( "octave_cost must be between 0 and 1." )            
+        if voicing_threshold < 0 or voicing_threshold> 1:
+            raise ValueError( "voicing_threshold must be between 0 and 1." ) 
         if min_pitch <= 0:
             raise ValueError( "The minimum pitch cannot be equal or less than zero." )
         if silence_threshold < 0 or silence_threshold > 1:
@@ -111,12 +103,7 @@ class Signal():
         #finding the window_len in seconds, finding frame len (as an integer of how many points 
         #will be in a window), finding number of frames/ windows that we will need to segment 
         #the signal into then segmenting signal
-        if HNR:
-            window_len = 6.0 / min_pitch
-            voicing_threshold = 0
-            octave_cost = 0
-        else:
-            window_len = 3.0 / min_pitch
+        window_len = 3.0 / min_pitch
             
         frame_len = window_len / time_step
         num_frames = max( 1, int( len( sig ) / frame_len + .5 ) ) 
@@ -130,8 +117,6 @@ class Signal():
             
         #initializing list of candidates for F_0
         best_cands = []
-        corrs_cand_vals = []
-        bestest=[]
         for index in range( len( segmented_signal ) ):
             time_begin, time_end = index * window_len, min( ( index + 1 ) * window_len, total_time )
             window_len = time_end - time_begin
@@ -146,13 +131,9 @@ class Signal():
             5. Divide the autocorrelation of the windowed signal by autocorrelation of the window
                     to estimate the autocorrelation of the segment (r_x)
             """
-            plt.plot(np.linspace(0,window_len,len(segment)),segment)
             
             segment = segment - segment.mean()
-            if HNR:
-                window = st.gauss_window(len(segment),window_len,10)
-            else:
-                window = np.hanning( len( segment ) )
+            window = np.hanning( len( segment ) )
             segment *= window
             r_a = st.estimated_autocorrelation( segment )
             r_w = st.estimated_autocorrelation( window )
@@ -186,14 +167,9 @@ class Signal():
             to pick the best peak that represents the frequency.
             """
             #we down sample the signal using sinc_interpolation, and eliminate any nan
-            if HNR:
-                up_sampled_time_array = np.linspace( 0, window_len, r_len * 2 )
-                vals = np.nan_to_num( st.sinc_interp( r_x , time_array, up_sampled_time_array ) )
-                time_array = up_sampled_time_array
-            else:
-                down_sampled_time_array = np.linspace( 0, window_len, r_len / 2 )
-                vals = np.nan_to_num( st.sinc_interp( r_x , time_array, down_sampled_time_array ) )
-                time_array = down_sampled_time_array
+            down_sampled_time_array = np.linspace( 0, window_len, r_len / 2 )
+            vals = np.nan_to_num( st.sinc_interp( r_x , time_array, down_sampled_time_array ) )
+            time_array = down_sampled_time_array
             
             if len( vals.nonzero()[ 0 ] ) != 0:
                 #finding maximizers, and maximums and eliminating values that don't produce a 
@@ -234,18 +210,6 @@ class Signal():
                 """
                 strengths=[]
     
-                #plt.plot(time_array,vals)
-                all_maxima,all_places=st.find_max(vals,time_array,np.inf)
-                all_maxima/=all_maxima[0]
-                all_maxima=all_maxima[1:]
-                first_one=np.where(all_maxima>=.99)[0]
-                if len(first_one)>0:
-                    all_maxima=all_maxima[:first_one[0]-1]
-                    
-                all_maxima=all_maxima[all_maxima>.6]
-                
-                if len(all_maxima)>1 :
-                    bestest.append(max(all_maxima))
                     
                 if len( maxima_values ) > 0:
                     """
@@ -263,19 +227,13 @@ class Signal():
                 # equation number 23
                 strengths.append( voicing_threshold + max( 0, 2 - ( local_peak / global_peak ) / 
                                             ( silence_threshold / ( 1 + voicing_threshold ) ) ) )
-                corrs_cand_vals.append( maxima_values[ np.argmax( strengths ) ] / max( vals ) )
                 best_cands.append( maxima_places[ np.argmax( strengths ) ] )
         best_cands = np.array( best_cands )
-        corrs_cand_vals = np.array( corrs_cand_vals )
-        corrs_cand_vals = corrs_cand_vals[ best_cands > 0 ]
         best_cands = best_cands[ best_cands > 0 ]
         if len( best_cands ) == 0:
             #if there are no candidates that fit criteria then assume the signal is unvoiced, 
             #i.e. return 0.
             return 0
-        if HNR:
-            bestest=sorted(bestest)[-1]
-            return 10*np.log10(bestest/(1-bestest))
         """
         Return the candidate that is in the 85th percentile, instead of the highest valued 
         candidates, which are more often than not anomalies caused by changes in amplitude in the
@@ -322,9 +280,115 @@ class Signal():
             
         """
         #TODO:***need to update test_Signal_Analysis to get 100% coverage***
+        time_step=1./self.rate
+        total_time = time_step * len( self.signal )
+        Nyquist_Frequency = 1. / ( time_step * 2 )
         
-        return self.get_F_0( min_pitch = min_pitch, silence_threshold = silence_threshold, HNR=True )
-        #get code put up github/travis/coveralls...   
+        #checking to make sure values are valid
+        #check for type errors of values passed in 
+
+        if type(min_pitch) != int or type(silence_threshold)!=float:
+            raise ValueError( "min_pitch must be an int, and silence_threshold must be a float." )
+  
+        if min_pitch <= 0:
+            raise ValueError( "The minimum pitch cannot be equal or less than zero." )
+        if silence_threshold < 0 or silence_threshold > 1:
+            raise ValueError( "silence_threshold must be between 0 and 1." )
+            
+        #filtering by Nyquist Frequency (preproccesing step)
+        upper_bound = .95 * Nyquist_Frequency
+        fft_signal = np.fft.fft( self.signal )
+        fft_signal = fft_signal * ( fft_signal < upper_bound )
+        sig = np.fft.ifft( fft_signal )
+        
+        #finding the window_len in seconds, finding frame len (as an integer of how many points 
+        #will be in a window), finding number of frames/ windows that we will need to segment 
+        #the signal into then segmenting signal
+        window_len = 6.0 / min_pitch
+            
+        frame_len = window_len / time_step
+        num_frames = max( 1, int( len( sig ) / frame_len + .5 ) ) 
+        #there has to be at least one frame
+        segmented_signal = [ sig[ int( i * frame_len ) : int( ( i + 1 ) * frame_len ) ] 
+                                                     for i in range( num_frames + 1 ) ]
+        
+        #This eliminates an empty list that could be created at the end
+        if len( segmented_signal[ len( segmented_signal ) - 1 ] ) == 0:
+            segmented_signal = segmented_signal[ : -1 ]
+            
+        #initializing list of candidates for F_0
+        bestest=[]
+        for index in range( len( segmented_signal ) ):
+            time_begin, time_end = index * window_len, min( ( index + 1 ) * window_len, total_time )
+            window_len = time_end - time_begin
+            segment = segmented_signal[ index ]
+            """
+            For each segment we follow the given algorithm (steps 3.2-3.10), by
+            1. Subtracting the mean of the segment
+            2. Multiply the segment by the hanning window
+            3. Calculate the autocorrelation of the windowed signal (r_a)
+            4. Calculate the autocorrelation of the window (r_w)
+            5. Divide the autocorrelation of the windowed signal by autocorrelation of the window
+                    to estimate the autocorrelation of the segment (r_x)
+            """
+            
+            segment = segment - segment.mean()
+            window = st.gauss_window(len(segment),window_len,10)
+            segment *= window
+            r_a = st.estimated_autocorrelation( segment )
+            r_w = st.estimated_autocorrelation( window )
+            r_x = r_a / r_w
+            
+            #eliminating points in the autocorrelation that are not finite (cause by dividing by 
+            #a number close to zero)
+            r_x = r_x[ np.isfinite( r_x ) ]
+            r_len = len( r_x )
+            
+            #creating an array of the points in time corresponding to our sampled autocorrelation
+            #of the signal (r_x)
+            time_array = np.linspace( 0, window_len, r_len )
+            
+
+            #Only consider the first half of the autocorrelation because for lags longer than a 
+            #half of the window length, it becomes less reliable there for signals with few 
+            #periods per window, stated in algorithm pg. 104.
+            
+            
+            first_half = np.ones( int( r_len / 2 ) )
+            second_half = np.zeros( r_len - int( r_len / 2 ) )
+            limited_window = np.hstack( ( first_half, second_half  ) )
+            r_x = r_x * limited_window
+
+            """
+                Sidenote: In the algorithm it states to upsample the signal by a factor of 2 
+            (step 3.11, referenceing eq. 22 where this is stated) to get a more accurate answer,
+            however in practice most of the signals contain too much noise and once upsampled, 
+            the noise is exaggerated. By downsampling the peaks are cleaner and it becomes easier
+            to pick the best peak that represents the frequency.
+            """
+            #we down sample the signal using sinc_interpolation, and eliminate any nan
+            up_sampled_time_array = np.linspace( 0, window_len, r_len * 2 )
+            vals = np.nan_to_num( st.sinc_interp( r_x , time_array, up_sampled_time_array ) )
+            time_array = up_sampled_time_array
+            
+            if len( vals.nonzero()[ 0 ] ) != 0:
+                all_maxima,all_places=st.find_max(vals,time_array,np.inf)
+                all_maxima/=all_maxima[0]
+                all_maxima=all_maxima[1:]
+                first_one=np.where(all_maxima>=.99)[0]
+                if len(first_one)>0:
+                    all_maxima=all_maxima[:first_one[0]-1]
+                    
+                all_maxima=all_maxima[all_maxima>.6]
+                
+                if len(all_maxima)>1 :
+                    bestest.append(max(all_maxima))
+        bestest=sorted(bestest)[-1]
+        return 10*np.log10(bestest/(1-bestest))
+
+        #TODO: take out silence threshold... its not used... or maybe use it in code to determine if there is a signal present
+        
+        #TODO:get code put up github/travis/coveralls...   
         #TODO: clone repo, put on github-> goes in super ai->afx->features (in my fork, ask when ready to merge fork)
         #if everything is similar enough can be put in one class, else seperate it into different classes/files
         #TODO: travis and coveralls, he will get a key for me to put it on privately, which I don't have yet so maybe don't work on this.

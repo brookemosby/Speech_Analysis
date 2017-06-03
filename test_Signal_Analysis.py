@@ -22,10 +22,7 @@ class Test_Signal():
             sig.get_F_0( max_pitch = 20000 )
         assert excinfo.typename == 'ValueError'
         assert excinfo.value.args[ 0 ] == "The maximum pitch cannot be greater than the Nyquist Frequency."
-        with pytest.raises( Exception ) as excinfo:
-            sig.get_F_0( HNR = 20000 )
-        assert excinfo.typename == 'TypeError'
-        assert excinfo.value.args[ 0 ] == "HNR must be a bool."
+
         with pytest.raises( Exception ) as excinfo:
             sig.get_F_0( min_pitch = 0 )
         assert excinfo.typename == 'ValueError'
