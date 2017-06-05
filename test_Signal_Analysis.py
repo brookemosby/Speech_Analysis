@@ -2,13 +2,16 @@ from Signal_Analysis import Signal
 from scipy.io import wavfile
 import numpy as np
 import pytest
+import time
 
 class Test_Signal():
     
     def test_get_F_0( self ):
         def testing_sig( rate, wave, true_freq ):
+            start=time.clock()
             sig = Signal( wave, rate )
             est_freq = sig.get_F_0()
+            assert time.clock()-start<11, "Takes too long"
             assert abs( est_freq - true_freq ) < 2, 'Estimated frequency not within allotted range.'
 
         wave_function = lambda x, frequency:(1 + .3 * np.sin( 2 * np.pi * x * frequency ) ) * np.sin( 4 * np.pi * x * frequency )
@@ -71,8 +74,10 @@ class Test_Signal():
     
     def test_get_HNR( self ):
         def testing_sig( rate, wave, true_HNR ):
+            start=time.clock()
             sig = Signal( wave, rate )
             est_HNR = sig.get_HNR()
+            assert time.clock()-start<12, "Takes too long"
             assert abs( est_HNR - true_HNR ) < 1, 'Estimated HNR not within allotted range.'
         wave_function = lambda x, frequency: np.sin( 2 * np.pi * x * frequency )
         domain = np.linspace( 0, 2, 10000 )
@@ -86,9 +91,9 @@ class Test_Signal():
         assert excinfo.value.args[ 0 ] == "The minimum pitch cannot be equal or less than zero."
         
         with pytest.raises( Exception ) as excinfo:
-            sig.get_HNR( silence_threshold = 4.5 )
-        assert excinfo.typename == 'ValueError'
-        assert excinfo.value.args[ 0 ] == "silence_threshold must be between 0 and 1."
+            sig.get_HNR( min_pitch = 'bad input' )
+        assert excinfo.typename == 'TypeError'
+        assert excinfo.value.args[ 0 ] == "min_pitch must be an int."
 
         #These cases test that the calculated answer is within an acceptable range (+/- 1 dB)
         rate, wave = wavfile.read( '03-01-01-01-01-01-10.wav' )

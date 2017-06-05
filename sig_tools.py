@@ -1,12 +1,5 @@
 import numpy as np
 #TODO: ***GO ON GITHUB LOOK AT EXAMPLES OF CLASS CODE, MAY NOT WANT EVERYTHING IN ONE GARGANTUAN FILE***
-#TODO: ***START OPTIMIZNG CODE. BE CAREFUL AND TEST OFTEN CODE IS DELICATE***
-
-def gauss_window( length, T, k ):
-    times=np.linspace(-.5*T,1.5*T,length)
-    gauss_func= lambda t: (np.e**(-k*(t/T-.5)**2)-np.e**(-k))/(1-np.e**(-k))
-    return gauss_func(times)
-
 def estimated_autocorrelation( x ):
     """
     This function accepts a signal and calculates an estimation of the autocorrelation, 
@@ -31,9 +24,6 @@ def estimated_autocorrelation( x ):
     a = np.real( np.fft.fft( s * np.conjugate( s ) ) )
     a = a[ :N ]
     return a
-
-
-    
 def sinc_interp( x, s, u ):
     """
     This function uses sinc interpolation to upsample x.
@@ -54,7 +44,6 @@ def sinc_interp( x, s, u ):
     #This calculates interpolated array
     y = np.dot( x, np.sinc( sincM / T ) )
     return y
-
 def find_max( arr, time_array, max_num_candidates ):
     """
     This function finds the first max_num_candidates maxima of an array.
