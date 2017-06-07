@@ -1,5 +1,31 @@
 import numpy as np
-#TODO: ***GO ON GITHUB LOOK AT EXAMPLES OF CLASS CODE, MAY NOT WANT EVERYTHING IN ONE GARGANTUAN FILE***
+
+def segment_signal( window_len, time_step, sig ):
+    """
+    This functions accepts a signal, and partitions it based off parameters passed in.
+    
+    Args:
+        window_len (float): The length of one partition of the signal.
+        time_step (float): The length of time between each sample.
+        sig (numpy.ndarray): The signal to be partitioned.
+        
+    Returns:
+        segmented_signal (list): a list composed of numpy.ndarray, each index 
+        corresponding to a partition.
+    """
+    
+    frame_len = window_len / time_step
+    
+    #there has to be at least one frame
+    num_frames = max( 1, int( len( sig ) / frame_len + .5 ) ) 
+    
+    segmented_signal = [ sig[ int( i * frame_len ) : int( ( i + 1 ) * frame_len ) ] 
+                                                 for i in range( num_frames + 1 ) ]
+    
+    #This eliminates an empty list that could be created at the end
+    if len( segmented_signal[ - 1 ] ) == 0:
+        segmented_signal = segmented_signal[ : -1 ]
+    return segmented_signal
 def estimated_autocorrelation( x ):
     """
     This function accepts a signal and calculates an estimation of the autocorrelation, 
@@ -11,7 +37,8 @@ def estimated_autocorrelation( x ):
     5. then again take the FFT
     
     Args:
-        x (numpy.ndarray): an array of the signal that autocorrelation is calculated from.
+        x (numpy.ndarray): an array of the signal that autocorrelation is calculated 
+        from.
     
     Returns: 
         a (numpy.ndarray): an array of the normalized autocorrelation of the signal.
@@ -26,7 +53,7 @@ def estimated_autocorrelation( x ):
     return a
 def sinc_interp( x, s, u ):
     """
-    This function uses sinc interpolation to upsample x.
+    This function uses sinc interpolation to up-sample or down-sample x.
     
     Args:
         x (numpy.ndarray): an array of the signal to be interpolated
@@ -50,13 +77,13 @@ def find_max( arr, time_array, max_num_candidates ):
     
     Args:
         arr (numpy.ndarray): an array of the signal we are calculating the peaks of.
-        time_array (numpy.ndarray): an array of the corresponding points in time that the
-            signal was sampled at
+        time_array (numpy.ndarray): an array of the corresponding points in time that
+        the signal was sampled at
         
     Returns:
         maxima_values (numpy.ndarray): an array of the calculated maximum values
-        maxima_places (numpy.ndarray): an array of the corresponding calculated places 
-            where the maxima occur.
+        maxima_places (numpy.ndarray): an array of the corresponding places where the 
+        maxima occur.
     """
     maxima_values = []
     maxima_places = []

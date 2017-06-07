@@ -1,108 +1,67 @@
-from Signal_Analysis import Signal
+import Signal_Analysis as sig
 from scipy.io import wavfile
 import numpy as np
 import pytest
-import time
 
-class Test_Signal():
+def test_get_F_0():
+    wave_function = lambda x, frequency:(1 + .3 * np.sin( 2 * np.pi * x * frequency ) ) * np.sin( 4 * np.pi * x * frequency )
+    domain = np.linspace( 0, 2, 10000 )
+    rate = 10000
+    wave = wave_function( domain, 50 )
+    #Here we test all the exceptions using the generic sin wave created above 
+    params = [ ( "The maximum pitch cannot be greater than the Nyquist Frequency.",   { 'max_pitch'         : 20000 } ),
+               ( "The minimum pitch cannot be equal or less than zero.",              { 'min_pitch'         : 0 } ),
+               ( "The minimum number of candidates is 2.",                            { 'max_num_candidates': 1 } ),
+               ( "octave_cost must be between 0 and 1.",                              { 'octave_cost'       : 3 } ),
+               ( "silence_threshold must be between 0 and 1.",                        { 'silence_threshold' : 3 } ),
+               ( "voicing_threshold must be between 0 and 1.",                        { 'voicing_threshold' : 3 } ) ]
+    for param in params:
+        message, kwargs = param
+        with pytest.raises( Exception ) as excinfo:
+            sig.get_F_0( wave, rate, **kwargs )
+        assert excinfo.typename == 'ValueError'
+        assert excinfo.value.args[ 0 ] == message
+    #This test the case that we have no valid candidates
+    assert sig.get_F_0( wave, rate, min_pitch = 400, max_num_candidates = 3 ) == 0
+    params = [ ( wavfile.read( '03-01-01-01-01-01-10.wav' ), 231.2 ),
+               ( wavfile.read( '03-01-06-01-01-02-04.wav' ), 338.2 ),
+               ( wavfile.read( 'OAF_youth_sad.wav' ),        172.5 ),
+               ( wavfile.read( 'YAF_kite_sad.wav' ),         211.9 ) ]                             
+    for param in params:
+        signal, true_val = param
+        est_val = sig.get_F_0( signal[ 1 ], signal[ 0 ] )
+        assert abs( est_val - true_val ) < 2, 'Estimated frequency not within allotted range.'
+
+def test_get_HNR():
     
-    def test_get_F_0( self ):
-        def testing_sig( rate, wave, true_freq ):
-            start=time.clock()
-            sig = Signal( wave, rate )
-            est_freq = sig.get_F_0()
-            assert time.clock()-start<11, "Takes too long"
-            assert abs( est_freq - true_freq ) < 2, 'Estimated frequency not within allotted range.'
-
-        wave_function = lambda x, frequency:(1 + .3 * np.sin( 2 * np.pi * x * frequency ) ) * np.sin( 4 * np.pi * x * frequency )
-        domain = np.linspace( 0, 2, 10000 )
-        rate = 10000
-        wave = wave_function( domain, 50 )
-        sig = Signal( wave, rate )
-        
-        #Here we test all the exceptions using the generic sin wave created above 
-        with pytest.raises( Exception ) as excinfo:
-            sig.get_F_0( max_pitch = 20000 )
-        assert excinfo.typename == 'ValueError'
-        assert excinfo.value.args[ 0 ] == "The maximum pitch cannot be greater than the Nyquist Frequency."
-
-        with pytest.raises( Exception ) as excinfo:
-            sig.get_F_0( min_pitch = 0 )
-        assert excinfo.typename == 'ValueError'
-        assert excinfo.value.args[ 0 ] == "The minimum pitch cannot be equal or less than zero."
-        
-        with pytest.raises( Exception ) as excinfo:
-            sig.get_F_0( max_num_candidates = 1 )
-        assert excinfo.typename == 'ValueError'
-        assert excinfo.value.args[ 0 ] == "The minimum number of candidates is 2."  
-                                 
-        with pytest.raises( Exception ) as excinfo:
-            sig.get_F_0( octave_cost = 4.5 )
-        assert excinfo.typename == 'ValueError'
-        assert excinfo.value.args[ 0 ] == "octave_cost must be between 0 and 1."
-        
-        with pytest.raises( Exception ) as excinfo:
-            sig.get_F_0( silence_threshold = 4.5 )
-        assert excinfo.typename == 'ValueError'
-        assert excinfo.value.args[ 0 ] == "silence_threshold must be between 0 and 1."
-        
-        with pytest.raises( Exception ) as excinfo:
-            sig.get_F_0( voicing_threshold = 4.5 )
-        assert excinfo.typename == 'ValueError'
-        assert excinfo.value.args[ 0 ] == "voicing_threshold must be between 0 and 1."
-        
-        with pytest.raises( Exception ) as excinfo:
-            sig.get_F_0( 'Testing' )
-        assert excinfo.typename == 'TypeError'
-        assert excinfo.value.args[ 0 ] == "min_pitch, max_pitch, and max_num_candidates must be an int, octave_cost, silence_threshold, and voicing_threshold must be a float"
-        #This test the case that we have no valid candidates
-        assert sig.get_F_0( min_pitch = 400, max_num_candidates = 3 ) == 0
-        
-        #These cases test that the calculated answer is within an acceptable range (+/- 2 hz)
-        rate, wave = wavfile.read( '03-01-01-01-01-01-10.wav' )
-        testing_sig( rate, wave, 231.2 )
-        
-        rate, wave = wavfile.read( '03-01-06-01-01-02-04.wav' )
-        testing_sig( rate, wave, 338.2 )
-        
-        rate, wave = wavfile.read( 'OAF_youth_sad.wav' )
-        testing_sig( rate, wave, 172.5 )
-        
-        rate, wave = wavfile.read( 'YAF_kite_sad.wav' )
-        testing_sig( rate, wave, 211.9 )
-
+    wave_function = lambda x, frequency: np.sin( 2 * np.pi * x * frequency )
+    domain = np.linspace( 0, 2, 10000 )
+    rate = 10000
+    wave = wave_function( domain, 50 )
     
-    def test_get_HNR( self ):
-        def testing_sig( rate, wave, true_HNR ):
-            start=time.clock()
-            sig = Signal( wave, rate )
-            est_HNR = sig.get_HNR()
-            assert time.clock()-start<12, "Takes too long"
-            assert abs( est_HNR - true_HNR ) < 1, 'Estimated HNR not within allotted range.'
-        wave_function = lambda x, frequency: np.sin( 2 * np.pi * x * frequency )
-        domain = np.linspace( 0, 2, 10000 )
-        rate = 10000
-        wave = wave_function( domain, 50 )
-        sig = Signal( wave, rate )
-        
-        with pytest.raises( Exception ) as excinfo:
-            sig.get_HNR( min_pitch = 0 )
-        assert excinfo.typename == 'ValueError'
-        assert excinfo.value.args[ 0 ] == "The minimum pitch cannot be equal or less than zero."
-        
-        with pytest.raises( Exception ) as excinfo:
-            sig.get_HNR( min_pitch = 'bad input' )
-        assert excinfo.typename == 'TypeError'
-        assert excinfo.value.args[ 0 ] == "min_pitch must be an int."
+    with pytest.raises( Exception ) as excinfo:
+        sig.get_HNR( wave, rate, min_pitch = 0 )
+    assert excinfo.typename == 'ValueError'
+    assert excinfo.value.args[ 0 ] == "The minimum pitch cannot be equal to or less than zero."
+    
+    params = [ ( wavfile.read( '03-01-01-01-01-01-10.wav' ), 12.195 ),
+               ( wavfile.read( '03-01-06-01-01-02-04.wav' ),  8.589 ),
+               ( wavfile.read( 'OAF_youth_sad.wav' ),        16.838 ),
+               ( wavfile.read( 'YAF_kite_sad.wav' ),         14.929 ) ]
+    
+    for param in params:
+        signal, true_val = param
+        est_val = sig.get_HNR( signal[ 1 ], signal[ 0 ] )
+        assert abs( est_val - true_val ) < 1, 'Estimated HNR not within allotted range.'
 
-        #These cases test that the calculated answer is within an acceptable range (+/- 1 dB)
-        rate, wave = wavfile.read( '03-01-01-01-01-01-10.wav' )
-        testing_sig( rate, wave, 12.195 )
-        rate, wave = wavfile.read( '03-01-06-01-01-02-04.wav' )
-        testing_sig( rate, wave, 8.589 )
-        
-        rate, wave = wavfile.read( 'OAF_youth_sad.wav' )
-        testing_sig( rate, wave, 16.838 )
-        
-        rate, wave = wavfile.read( 'YAF_kite_sad.wav' )
-        testing_sig( rate, wave, 14.929 )
+def test_get_Jitter():
+    unknown = 0
+    params = [ ( wavfile.read( '03-01-01-01-01-01-10.wav' ), unknown ),
+               ( wavfile.read( '03-01-06-01-01-02-04.wav' ), unknown ),
+               ( wavfile.read( 'OAF_youth_sad.wav' ),        unknown ),
+               ( wavfile.read( 'YAF_kite_sad.wav' ),         unknown ) ]    
+    for param in params:
+        signal, true_val = param
+        est_val = sig.get_Jitter( signal[ 1 ], signal[ 0 ] )
+        assert abs( est_val - true_val ) == est_val
+    #for now this works. will need to change later...
