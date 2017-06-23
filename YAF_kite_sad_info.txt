@@ -1,0 +1,40 @@
+-- Voice report for 4. Sound YAF_kite_sad --
+Date: Wed Jun 14 14:05:16 2017
+
+WARNING: some of the following measurements may be imprecise.
+For more precision, go to "Pitch settings" and choose "Optimize for voice analysis".
+
+Time range of SELECTION
+   From 0 to 0 seconds (duration: 2.269108 seconds)
+Pitch:
+   Median pitch: 229.030 Hz
+   Mean pitch: 235.036 Hz
+   Standard deviation: 34.475 Hz
+   Minimum pitch: 178.123 Hz
+   Maximum pitch: 289.684 Hz
+Pulses:
+   Number of pulses: 326
+   Number of periods: 322
+   Mean period: 4.282298E-3 seconds
+   Standard deviation of period: 0.735102E-3 seconds
+Voicing:
+   Fraction of locally unvoiced frames: 36.323%   (81 / 223)
+   Number of voice breaks: 1
+   Degree of voice breaks: 12.394%   (0.281231 seconds / 2.269108 seconds)
+Jitter:
+   Jitter (local): 2.107%
+   Jitter (local, absolute): 90.236E-6 seconds
+   Jitter (rap): 1.175%
+   Jitter (ppq5): 1.104%
+   Jitter (ddp): 3.525%
+Shimmer:
+   Shimmer (local): 4.825%
+   Shimmer (local, dB): 0.614 dB
+   Shimmer (apq3): 1.792%
+   Shimmer (apq5): 2.016%
+   Shimmer (apq11): 2.976%
+   Shimmer (dda): 5.376%
+Harmonicity of the voiced parts only:
+   Mean autocorrelation: 0.929032
+   Mean noise-to-harmonics ratio: 0.111504
+   Mean harmonics-to-noise ratio: 16.206 dB
