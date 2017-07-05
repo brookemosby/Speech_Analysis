@@ -1,17 +1,15 @@
 import numpy as np
 import scipy.fftpack as sf
-"""
 def gaussian(length,T,k=12):
     t=np.linspace(0,T,length)
     return (np.e**(-k*(t/T-.5)**2)-np.e**(-k))/(1-np.e**(-k))
-"""
-def segment_signal( window_len, time_step, sig ):
+def segment_signal( window_len, time_step, sig, rate ):
     """
     This functions accepts a signal, and partitions it based off parameters passed in.
     
     Args:
         window_len (float): The length of one partition of the signal.
-        time_step (float): The length of time between each sample.
+        time_step (float): The length of time between each window.
         sig (numpy.ndarray): The signal to be partitioned.
         
     Returns:
@@ -19,12 +17,13 @@ def segment_signal( window_len, time_step, sig ):
         corresponding to a partition.
     """
     
-    frame_len = window_len / time_step
+    frame_len = int( window_len * rate )
+    time_len = int( time_step * rate )
     
     #there has to be at least one frame
-    num_frames = max( 1, int( len( sig ) / frame_len + .5 ) ) 
+    num_frames = max( 1, int( len( sig ) / time_len + .5 ) ) 
     
-    segmented_signal = [ sig[ int( i * frame_len ) : int( ( i + 1 ) * frame_len ) ] 
+    segmented_signal = [ sig[ int( i * time_len ) : int( i  * time_len ) + frame_len ]  
                                                  for i in range( num_frames + 1 ) ]
     
     #This eliminates an empty list that could be created at the end
@@ -56,6 +55,15 @@ def estimated_autocorrelation( x ):
     a = np.real( sf.fft( s * np.conjugate( s ) ) )
     a = a[ :N ]
     return a
+
+def estimate_cross_correlation( x, y ):
+    N = len( x )
+    x = np.hstack( ( x, np.zeros( 2 ** ( int( np.log2( N ) + 1 ) ) - N ) ) ) 
+    y = np.hstack( ( y, np.zeros( 2 ** ( int( np.log2( N ) + 1 ) ) - N ) ) ) 
+    x = np.fft.rfft( x )
+    y = np.fft.rfft( y[ : : -1 ] )
+    return np.fft.irfft( x * y )#[ : N ]
+    
 def viterbi(cands,strengths,num_cands,v_unv_cost,oct_jump_cost):
     best_total_cost=np.inf
     best_total_path=[]
