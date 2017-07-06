@@ -31,16 +31,16 @@ def test_get_F_0():
     #This test the case that we have no valid candidates
     assert sig.get_F_0( wave, rate, min_pitch = 400, max_num_cands = 3 ) == 0
     params = [ ( wave1, rate1, 228.892 ),
-               ( wave2, rate2, 349.443 ),
+               ( wave2, rate2, 349.444 ),
                ( wave3, rate3, 182.571 ),
-               ( wave4, rate4, 229.354 ) ]
+               ( wave4, rate4, 229.355 ) ]
     
     for param in params:
         wave, rate, true_val = param
         start = time.clock()
         est_val = sig.get_F_0( wave, rate )
-        #assert time.clock() - start < 1
-        assert abs( est_val - true_val ) < 3.15, 'Estimated frequency not within allotted range.'
+        assert time.clock() - start < .25
+        assert abs( est_val - true_val ) < 5, 'Estimated frequency not within allotted range.'
 
 def test_get_HNR():
     
@@ -74,10 +74,10 @@ def test_get_Jitter():
     rate = 10000
     wave = wave_function( domain, 50 )
     
-    params = [ ( wave1, rate1, np.array( [ 1.849, 82.600E-6, 0.853, 0.962, 2.560 ] ) ),
-               ( wave2, rate2, np.array( [ 2.035, 60.799E-6, 0.824, 0.910, 2.471 ] ) ),
-               ( wave3, rate3, np.array( [ 1.472, 75.910E-6, 0.600, 0.640, 1.800 ] ) ),
-               ( wave4, rate4, np.array( [ 2.308, 97.224E-6, 1.184, 1.061, 3.551 ] ) ) ] 
+    params = [ ( wave1, rate1, np.array( [ 0.01631, 7.29097e-5, 0.00739, 0.00908, 0.02220 ] ) ),
+               ( wave2, rate2, np.array( [ 0.02043, 6.17719e-5, 0.00824, 0.01022, 0.02475 ] ) ),
+               ( wave3, rate3, np.array( [ 0.01382, 7.25845e-5, 0.00584, 0.00630, 0.01752 ] ) ),
+               ( wave4, rate4, np.array( [ 0.02215, 9.35867e-5, 0.01206, 0.01121, 0.03619 ] ) ) ] 
     for param in params:
         wave, rate, true_val = param
         start = time.clock()
@@ -86,5 +86,5 @@ def test_get_Jitter():
         est_val=np.array( list( est_val.values() ) )
         
         #assert time.clock() - start < 6
-        assert np.allclose( est_val , true_val, atol=0, rtol=.5 ) 
+        assert np.allclose( est_val , true_val, atol=1e-5, rtol=.15 ) 
     #for now this works. will need to change later...

@@ -6,8 +6,8 @@ from matplotlib import pyplot as plt
 from scipy import signal as ss
 
 def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max_num_cands = 15,
-            voicing_threshold = .45, silence_threshold = .03, octave_cost = .01,
-            voiced_unvoiced_cost = .14, octave_jump_cost = .35, jitter = False, accurate = False):
+            voicing_threshold = .45, silence_threshold = .03, octave_cost = .01, voiced_unvoiced_cost = .14,
+            octave_jump_cost = .35, accurate = False, jitter = False, pulse = False ):
     """
     Compute Fundamental Frequency (F0).
     Algorithm filters out values higher than the Nyquist Frequency, then segments the signal 
@@ -55,8 +55,9 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         decrease the number of voiced/unvoiced transitions, increase this value.
         
         #TODO:add in a jitter parameter
+        #TODO:add in a pulse parameter
         #TODO:add in a timestep parameter, also fix sigtools description for segment
-        #TODO:update values for different params...
+        #TODO:update values for different params.., also throw in the descriptions from praat
         
     Returns:
         float: The median F0 of the signal.
@@ -77,10 +78,17 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         sig.get_F_0( wave, rate )
     """
     
-    
-    total_time = len( signal ) / rate
-    Nyquist_Frequency = 1. * rate /  2 
-    
+    Nyquist_Frequency = rate /  2 
+    global_peak = max( abs( signal ) ) 
+    upper_bound = .95 * Nyquist_Frequency
+    initial_len = len( signal )
+    zeros_pad = 2 ** ( int( np.log2( len( signal ) ) ) + 1 ) - len( signal )
+    signal = np.hstack( ( signal, np.zeros( zeros_pad ) ) )
+    fft_signal = sf.fft( signal )
+    for i in range(int(upper_bound),int(initial_len/2)):
+        fft_signal[i]=0
+    sig = sf.ifft( fft_signal )
+    sig = sig[ :initial_len ]
     #checking to make sure values are valid
     if Nyquist_Frequency < max_pitch:
         raise ValueError( "The maximum pitch cannot be greater than the Nyquist Frequency." )
@@ -94,18 +102,8 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         raise ValueError( "The minimum pitch cannot be equal or less than zero." )
     if silence_threshold < 0 or silence_threshold > 1:
         raise ValueError( "silence_threshold must be between 0 and 1." )
-        
-    #filtering by Nyquist Frequency and segmenting signal 
-    upper_bound = .9 * Nyquist_Frequency
-    intial_len = len( signal )
-    zeros_pad = 2 ** ( int( np.log2( len( signal ) ) ) + 1 ) - len( signal )
-    signal = np.hstack( ( signal, np.zeros( zeros_pad ) ) )
-    fft_signal = sf.fft( signal )
-    fft_signal = fft_signal * ( fft_signal < upper_bound )
-    sig = sf.ifft( fft_signal )
-    sig = sig[ :intial_len ]
-    
-    
+
+    #values are significantly closer to praat's only problem is last one has too low values  
     #segmenting signal into windows that contain 3 periods of minimum pitch
     if jitter:
         if time_step == 0:
@@ -124,49 +122,42 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         else:
             window_len = 3.0 / min_pitch
             
-    octave_jump_cost *= .01 / time_step
+    octave_jump_cost     *= .01 / time_step
     voiced_unvoiced_cost *= .01 / time_step            
-    segmented_signal = st.segment_signal( window_len, time_step, sig, rate )
-    global_peak = max( abs( sig ) )    
+    segmented_signal = st.segment_signal( window_len, time_step, signal, rate )
+     
     
     #initializing list of candidates for F_0, and their strengths
     best_cands = []
-    strengths = []
+    strengths  = []
+    if pulse:
+        time_vals = []
     for index in range( len( segmented_signal ) ):
         
         segment = segmented_signal[ index ]
         window_len = len( segment ) / rate
         local_peak = max( abs( segment ) )
-        
-        #calculating autocorrelation, based off steps 3.2-3.10
-        segment = segment - segment.mean()
+        if pulse:
+            time_vals.append( ( index * time_step, index * time_step + window_len ) )
+
         if accurate:
             window = st.gaussian( len( segment ), window_len )
         else:
             window = np.hanning( len( segment ) )
+            
+        #calculating autocorrelation, based off steps 3.2-3.10
+        segment = segment - segment.mean()
         segment *= window
         r_a = st.estimated_autocorrelation( segment )
         r_w = st.estimated_autocorrelation( window )
         r_x = r_a / r_w
         r_x /= r_x[ 0 ]
-        #eliminating infinite values created by dividing by numbers close to zero
-        r_x = r_x[ np.isfinite( r_x ) ]
-        r_x = r_x[: int( len( r_x ) / 2 ) ]
-        
+        r_x = r_x[ : int( len( r_x / 2 ) ) ]
         #creating an array of the points in time corresponding to our sampled autocorrelation
         #of the signal (r_x)
-        time_array = np.linspace( 0, window_len / 2, len( r_x ) )
-        plt.plot(time_array,r_x)
-        if len(r_x) >= 23:
-            r_x = ss.savgol_filter( r_x, 23, 7 )
-        elif len( r_x ) % 2 == 1:
-            r_x = ss.savgol_filter( r_x, len(r_x), max( len(r_x) - 2, 1 ) )
-        else:
-            r_x = ss.savgol_filter( r_x, len(r_x) - 1, max( len(r_x) - 3, 1 ) )
-        #finding maximizers, and maximums and eliminating values that don't produce a 
-        #pitch in the allotted range.
-        i=pu.indexes( r_x, thres = .5, min_dist = 100 )
-        maxima_values, maxima_places = r_x[  i ], time_array[ i ]
+        time_array = np.linspace( 0, window_len , len( r_x ) )
+        i = pu.indexes( r_x )
+        maxima_values, maxima_places = r_x[ i ], time_array[ i ]
         max_place_possible = 1. / min_pitch
         min_place_possible = 1. / max_pitch
 
@@ -175,18 +166,15 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         
         maxima_values = maxima_values[ maxima_places <= max_place_possible ]
         maxima_places = maxima_places[ maxima_places <= max_place_possible ]
-        plt.plot(time_array,r_x)
-        plt.plot(maxima_places,maxima_values,'o')
-        #plt.show()
         
-        if len( maxima_values ) > 0 :
+        if len( maxima_values ) > 0:
             #finding the max_num_cands-1 maximizers, and maximums, then calculating their
             #strengths (eq. 23 & 24) and accounting for silent candidate
             maxima_places = np.array( [ maxima_places[ i ] for i in np.argsort( maxima_values )[
                     -1 * ( max_num_cands - 1 ) : ] ] )
             maxima_values = np.array( [ maxima_values[ i ] for i in np.argsort( maxima_values )[
                     -1 * ( max_num_cands - 1 ) : ] ] )
-            strengths_1 = [ max_val - octave_cost ** 2 * np.log2( min_pitch * max_place ) for 
+            strengths_1 = [ max_val - octave_cost * np.log2( min_pitch * max_place ) for 
                     max_val, max_place in zip( maxima_values, maxima_places ) ]
             strengths_1.append( voicing_threshold + max( 0, 2 - ( ( local_peak / global_peak ) / 
                     ( silence_threshold / ( 1 + voicing_threshold ) ) ) ) )
@@ -201,204 +189,29 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
             strengths.append( [ voicing_threshold + max( 0, 2 - ( ( local_peak / global_peak ) /
                     ( silence_threshold / ( 1 + voicing_threshold ) ) ) ) ] )
                 
-    #using viterbi algorithm to find a path through best set of candidates        
-    f_0 = st.viterbi( best_cands, strengths, max_num_cands, voiced_unvoiced_cost, octave_jump_cost )
-    
-    f_0 = np.array( f_0 )
-
-    f_0 = f_0[ f_0 < np.inf ]
-    if jitter:
-        return f_0
-    if len( f_0 ) == 0:
-        return 0
-    else:
-        f_0 = 1.0 / f_0
-        return np.median( f_0 )
-
-def get_F_0_cc( signal, rate, time_step = 0, min_pitch = 75, max_pitch = 600, max_num_cands = 15,
-            voicing_threshold = .45, silence_threshold = .03, octave_cost = .01,
-            voiced_unvoiced_cost = .14, octave_jump_cost = .35, jitter = True ):
-    """
-    Compute Fundamental Frequency (F0).
-    Algorithm filters out values higher than the Nyquist Frequency, then segments the signal 
-    into frames containing at least 3 periods of the minimum pitch. For each frame it then 
-    calculates autocorrelation of the signal. After autocorrelation is calculated the maxima 
-    values are found. Once these values have been chosen the best candidate for the F0 is 
-    picked and then returned.
-    This algorithm is adapted from 
-    http://www.fon.hum.uva.nl/david/ba_shs/2010/Boersma_Proceedings_1993.pdf
-    
-    Args:
-        signal (numpy.ndarray): The signal the fundamental frequency will be calculated from.
-        
-        rate (int): the rate per seconds that the signal was sampled at.
-        
-        min_pitch (float): (default value: 75) minimum value to be returned as pitch, cannot 
-        be less than or equal to zero
-        
-        max_pitch (float): (default value: 600) maximum value to be returned as pitch, cannot
-        be greater than Nyquist Frequency
-        
-        max_num_cands (int): (default value: 15) maximum number of candidates to be 
-        considered for each frame, unvoiced candidate (i.e. F_0 equal to zero) is always 
-        considered.
-        
-        silence_threshold (float): (default value: 0.01) frames that do not contain amplitudes
-        above this threshold (relative to the global maximum amplitude), are probably silent.
-        
-        voicing_threshold (float): (default value: 0.45) the strength of the unvoiced candidate,
-        relative to the maximum possible autocorrelation. To increase the number of unvoiced 
-        decisions, increase this value.
-        
-        octave_cost (float): (default value: 0.01 per octave) degree of favouring of 
-        high-frequency candidates, relative to the maximum possible autocorrelation. This is 
-        necessary because in the case of a perfectly periodic signal, all undertones of F0 are 
-        equally strong candidates as F0 itself. To more strongly favour recruitment of 
-        high-frequency candidates, increase this value.
-        
-        octave_jump_cost (float): (default value: 0.15) degree of disfavouring of pitch changes, 
-        relative to the maximum possible autocorrelation. To decrease the number of large 
-        frequency jumps, increase this value. 
-        
-        voiced_unvoiced_cost (float): (default value: 0.005) degree of disfavouring of 
-        voiced/unvoiced transitions, relative to the maximum possible autocorrelation. To 
-        decrease the number of voiced/unvoiced transitions, increase this value.
-        
-        #TODO:add in a jitter parameter
-        #TODO:add in a timestep parameter, also fix sigtools description for segment
-        #TODO:update values for different params...
-        
-    Returns:
-        float: The median F0 of the signal.
-        
-    Raises:
-        ValueError: The maximum pitch cannot be greater than the Nyquist Frequency.
-        ValueError: The minimum pitch cannot be equal or less than zero.
-        ValueError: The minimum number of candidates is 2.
-        ValueError: octave_cost must be between 0 and 1.
-        ValueError: silence_threshold must be between 0 and 1.
-        ValueError: voicing_threshold must be between 0 and 1.
-
-    Example:
-    ::
-        from scipy.io import wavfile as wav
-        import Signal_Analysis as sig
-        rate, wave = wav.read( 'example_audio_file.wav' )
-        sig.get_F_0( wave, rate )
-    """
-    
-    Nyquist_Frequency = 1. * rate /  2 
-    
-    #checking to make sure values are valid
-    if Nyquist_Frequency < max_pitch:
-        raise ValueError( "The maximum pitch cannot be greater than the Nyquist Frequency." )
-    if max_num_cands <2 :
-        raise ValueError( "The minimum number of candidates is 2.")
-    if octave_cost < 0 or octave_cost > 1:
-        raise ValueError( "octave_cost must be between 0 and 1." )            
-    if voicing_threshold < 0 or voicing_threshold> 1:
-        raise ValueError( "voicing_threshold must be between 0 and 1." ) 
-    if min_pitch <= 0:
-        raise ValueError( "The minimum pitch cannot be equal or less than zero." )
-    if silence_threshold < 0 or silence_threshold > 1:
-        raise ValueError( "silence_threshold must be between 0 and 1." )
-        
-    #filtering by Nyquist Frequency and segmenting signal 
-    upper_bound = .9 * Nyquist_Frequency
-    intial_len = len( signal )
-    zeros_pad = 2 ** ( int( np.log2( len( signal ) ) ) + 1 ) - len( signal )
-    signal = np.hstack( ( signal, np.zeros( zeros_pad ) ) )
-    fft_signal = sf.fft( signal )
-    fft_signal = fft_signal * ( fft_signal < upper_bound )
-    sig = sf.ifft( fft_signal )
-    sig = sig[ :intial_len ]
-    
-    #segmenting signal into windows that contain 3 periods of minimum pitch
-    if time_step == 0:
-        time_step = .25 / min_pitch
-
-    window_len = 1.0 / min_pitch     
-        
-    octave_jump_cost *= .003 / time_step
-    voiced_unvoiced_cost *= .003 / time_step            
-    segmented_signal = st.segment_signal( window_len, time_step, sig, rate )
-    global_peak = max( abs( sig ) )    
-    
-    #initializing list of candidates for F_0, and their strengths
-    best_cands = []
-    strengths = []
-    f_0=[]
-    for index in range( len( segmented_signal ) -1 ):
-        
-        s1 = segmented_signal[ index ]
-        s2 = segmented_signal[ index + 1]
-        window_len = len( s1 ) / rate
-        local_peak = max( max( abs( s1 ) ), max( abs( s2 ) ) )
-        
-        #calculating autocorrelation, based off steps 3.2-3.10
-        if len( s1 ) == len( s2 ):
-            r_x = st.estimate_cross_correlation( s1, s2 )
-            r_x /= max( r_x )
-            #eliminating infinite values created by dividing by numbers close to zero
-            r_x = r_x[ np.isfinite( r_x ) ]
-            r_x=r_x[:int(3*len(r_x)/4)]
-            #creating an array of the points in time corresponding to our sampled autocorrelation
-            #of the signal (r_x)
-            time_array = np.linspace( 0, 3*window_len/4, len( r_x ) )
-            plt.plot(time_array,r_x)
-            r_x = ss.savgol_filter(r_x,23,5)
-            
-            #finding maximizers, and maximums and eliminating values that don't produce a 
-            #pitch in the allotted range.
-            i = pu.indexes( r_x )
-            maxima_values, maxima_places = r_x[ i ], time_array[ i ]
-            max_place_possible = 1. / min_pitch
-            min_place_possible = max( 1. / max_pitch, time_step )
-    
-            maxima_values = maxima_values[ maxima_places > min_place_possible ]
-            maxima_places = maxima_places[ maxima_places > min_place_possible ]
-            
-            maxima_values = maxima_values[ maxima_places < max_place_possible ]
-            maxima_places = maxima_places[ maxima_places < max_place_possible ]
-            plt.plot(time_array,r_x)
-            plt.plot(maxima_places,maxima_values,'o')
-            #plt.show()
-            
-            if len( maxima_values ) > 0 :
-                #finding the max_num_cands-1 maximizers, and maximums, then calculating their
-                #strengths (eq. 23 & 24) and accounting for silent candidate
-                maxima_places = np.array( [ maxima_places[ i ] for i in np.argsort( maxima_values )[
-                        -1 * ( max_num_cands - 1 ) : ] ] )
-                maxima_values = np.array( [ maxima_values[ i ] for i in np.argsort( maxima_values )[
-                        -1 * ( max_num_cands - 1 ) : ] ] )
-                strengths_1 = [ max_val - octave_cost ** 2 * np.log2( min_pitch * max_place ) for 
-                        max_val, max_place in zip( maxima_values, maxima_places ) ]
-                strengths_1.append( voicing_threshold + max( 0, 2 - ( ( local_peak / global_peak ) / 
-                        ( silence_threshold / ( 1 + voicing_threshold ) ) ) ) )
+    #using viterbi algorithm to find a path through best set of candidates    
+    f_0 = st.viterbi( best_cands, strengths, voiced_unvoiced_cost, octave_jump_cost )
+    if pulse:
+        removed = 0
+        for i in range( len( f_0 ) ):
+            if f_0[ i ] == np.inf:
+                time_vals.remove( time_vals[ i - removed ] )
+                removed += 1
                 
-                #np.inf is our silent candidate
-                maxima_places = np.hstack( ( maxima_places, np.inf ) )
-                best_cands.append( list( maxima_places ) )
-                strengths.append( strengths_1 )
-            else:
-                #if there are no available maximums, only account for silent candidate
-                best_cands.append( [ np.inf ] )
-                strengths.append( [ voicing_threshold + max( 0, 2 - ( ( local_peak / global_peak ) /
-                        ( silence_threshold / ( 1 + voicing_threshold ) ) ) ) ] )
-
-                #f_0.append(maxima_places[np.argmax(maxima_values)])
-    #using viterbi algorithm to find a path through best set of candidates        
-    f_0 = st.viterbi( best_cands, strengths, max_num_cands, voiced_unvoiced_cost, octave_jump_cost )
-    
-    f_0 = np.array( f_0 )
     f_0 = f_0[ f_0 < np.inf ]
+    if pulse:
+        return f_0, time_vals
+
     if jitter:
         return f_0
+    
     if len( f_0 ) == 0:
         return 0
     else:
         f_0 = 1.0 / f_0
         return np.median( f_0 )
+
+
 
 
 
@@ -456,14 +269,17 @@ def get_HNR( signal, rate, min_pitch = 75, silence_threshold = .01, periods_per_
         raise ValueError( "silence_threshold must be between 0 and 1." )
         
     #filtering by Nyquist Frequency and segmenting signal 
-    upper_bound = .9 * Nyquist_Frequency
-    intial_len = len( signal )
+    Nyquist_Frequency = rate /  2 
+    global_peak = max( abs( signal ) ) 
+    upper_bound = .95 * Nyquist_Frequency
+    initial_len = len( signal )
     zeros_pad = 2 ** ( int( np.log2( len( signal ) ) ) + 1 ) - len( signal )
     signal = np.hstack( ( signal, np.zeros( zeros_pad ) ) )
     fft_signal = sf.fft( signal )
-    fft_signal = fft_signal * ( fft_signal < upper_bound )
+    for i in range(int(upper_bound),int(initial_len/2)):
+        fft_signal[i]=0
     sig = sf.ifft( fft_signal )
-    sig = sig[ :intial_len ]
+    sig = sig[ :initial_len ]
     window_len = periods_per_window / min_pitch
     segmented_signal = st.segment_signal( window_len, window_len, sig, rate )
     
@@ -475,7 +291,6 @@ def get_HNR( signal, rate, min_pitch = 75, silence_threshold = .01, periods_per_
         segment = segmented_signal[ index ]
         window_len = len( segment ) / rate
         local_peak = max( abs( segment ) )
-        
         #calculating autocorrelation, based off steps 3.2-3.10
         segment = segment - segment.mean()
         window = np.hanning( len( segment ) )
@@ -501,7 +316,7 @@ def get_HNR( signal, rate, min_pitch = 75, silence_threshold = .01, periods_per_
         time_array = time_array[ time_array  <= max_place_possible ]
         
         #values greater than one produce nan values
-        r_x = r_x[ r_x <1 ]
+        r_x = r_x[ r_x < 1 ]
         
         #eq. 23 & 24 with octave_cost, and voicing_threshold set to zero
         strengths = [ max( r_x ), max( 0, 2 - ( ( local_peak / global_peak ) / ( silence_threshold ) ) ) ]
@@ -520,7 +335,49 @@ def get_HNR( signal, rate, min_pitch = 75, silence_threshold = .01, periods_per_
     best_candidate = np.mean( best_cands )
     return best_candidate
         
-
+def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600):
+    time_step = 3.0 / min_pitch #might need to change this value later to match up to PointProcess# of periods
+    period, interval = get_F_0( signal, rate, time_step = time_step, min_pitch = min_pitch, 
+                               max_pitch = max_pitch, pulse = True )
+    points=[]
+    total_time = len( signal ) / rate
+    time_arr = np.linspace( 0, total_time, len( signal ) )
+    #may need to go through and plot everything to visualize better...
+    for i in range( len( period ) ):
+        time_start, time_end = interval[ i ]
+        t_start_index = np.argmin( abs( time_arr - time_start  ) )
+        t_end_index   = np.argmin( abs( time_arr - time_end    ) ) 
+        
+        T_0 = period[ i ]
+        t_mid = ( time_start + time_end ) / 2.0   
+        
+        frame_start, frame_end = t_mid - T_0 / 2.0, t_mid + T_0 / 2.0
+        
+        f_start_index = np.argmin( abs( time_arr - frame_start ) )
+        f_end_index   = np.argmin( abs( time_arr - frame_end   ) )
+        while f_start_index != t_start_index :
+            t_index = np.argmax( abs( signal[ f_start_index : f_end_index + 1 ] ) ) + f_start_index
+            t = time_arr[ t_index ]
+            points.append( t )
+            frame_start = max( time_start, t - 1.2 * T_0 / 2.0 )
+            frame_end = t - .8 * T_0 / 2.0
+            f_start_index = np.argmin( abs( time_arr - frame_start ) )
+            f_end_index   = np.argmin( abs( time_arr - frame_end   ) )
+            
+        frame_start, frame_end = t_mid - T_0 / 2.0, t_mid + T_0 / 2.0
+        f_start_index = np.argmin( abs( time_arr - frame_start ) )
+        f_end_index   = np.argmin( abs( time_arr - frame_end   ) )     
+        
+        while f_end_index != t_end_index :
+            t_index = np.argmax( abs( signal[ f_start_index : f_end_index + 1 ] ) ) + f_start_index
+            t = time_arr[ t_index ]
+            points.append( t )
+            frame_start =  t + .8 * T_0 / 2.0 
+            frame_end = min( time_end, t + 1.2 * T_0 / 2.0 )
+            f_start_index = np.argmin( abs( time_arr - frame_start ) )
+            f_end_index   = np.argmin( abs( time_arr - frame_end   ) )
+    points = sorted( points )
+    return points
 
 
 
@@ -574,11 +431,11 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
     
     """    
 
-    periods = get_F_0( signal, rate, time_step = 0, jitter = True )
-    print(periods)
+    periods = get_F_0( signal, rate, time_step = .004, jitter = True ) 
+    print(periods, '\n',len(periods))
+    
     min_period_factor = 1.0 / max_period_factor
     period_variation = []
-    print(len(periods))
     #finding local, absolute
     for i in range( len( periods ) - 1 ):
         p1 = periods[ i ]
@@ -620,7 +477,7 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
     
     avg_period = sum_total / num_periods 
     print(avg_period)
-    relative = absolute / avg_period * 100
+    relative = absolute / avg_period
                       
     periods = periods[ 1 : -1 ]
     
@@ -646,7 +503,7 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
             
             sum_total += abs( p2 - ( p1 + p2 + p3 ) / 3.0 )
             num_periods += 1
-    rap = ( sum_total / num_periods ) / avg_period  * 100
+    rap = ( sum_total / num_periods ) / avg_period 
           
     #finding ppq5
     sum_total = 0
@@ -681,7 +538,7 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
             sum_total += abs( p3 - ( p1 + p2 + p3 +p4 + p5 ) / 5.0 )
             num_periods += 1
             
-    ppq5 = ( sum_total / num_periods ) / avg_period * 100
+    ppq5 = ( sum_total / num_periods ) / avg_period
             
     return {  'local' : relative, 'local, absolute' : absolute, 'rap' : rap, 'ppq5' : ppq5, 'ddp' : 3 * rap }
 

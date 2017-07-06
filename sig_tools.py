@@ -1,8 +1,10 @@
 import numpy as np
 import scipy.fftpack as sf
+
 def gaussian(length,T,k=12):
     t=np.linspace(0,T,length)
     return (np.e**(-k*(t/T-.5)**2)-np.e**(-k))/(1-np.e**(-k))
+
 def segment_signal( window_len, time_step, sig, rate ):
     """
     This functions accepts a signal, and partitions it based off parameters passed in.
@@ -30,6 +32,7 @@ def segment_signal( window_len, time_step, sig, rate ):
     if len( segmented_signal[ - 1 ] ) == 0:
         segmented_signal = segmented_signal[ : -1 ]
     return segmented_signal
+
 def estimated_autocorrelation( x ):
     """
     This function accepts a signal and calculates an estimation of the autocorrelation, 
@@ -56,74 +59,47 @@ def estimated_autocorrelation( x ):
     a = a[ :N ]
     return a
 
-def estimate_cross_correlation( x, y ):
-    N = len( x )
-    x = np.hstack( ( x, np.zeros( 2 ** ( int( np.log2( N ) + 1 ) ) - N ) ) ) 
-    y = np.hstack( ( y, np.zeros( 2 ** ( int( np.log2( N ) + 1 ) ) - N ) ) ) 
-    x = np.fft.rfft( x )
-    y = np.fft.rfft( y[ : : -1 ] )
-    return np.fft.irfft( x * y )#[ : N ]
-    
-def viterbi(cands,strengths,num_cands,v_unv_cost,oct_jump_cost):
-    best_total_cost=np.inf
-    best_total_path=[]
-    for a in range(len(cands[-1])):
-        end_val=cands[-1][a]
-        level=len(cands)-1
-        best_path=[]
-        best_path.append(end_val)
-        total_cost=0
-        while level>0:
-            prev_level=level-1
-            cur_val=best_path[-1]
-            j=cands[level].index(cur_val)
-            best_val=0
-            best_cost=0
-            
-            if len(cands[prev_level])==1:
-                best_val=np.inf
-                if cur_val<np.inf:
-                    best_cost=v_unv_cost
-            else:
-                for i in range(len(cands[prev_level])):
-                    prev_val=cands[prev_level][i]
-                    if prev_val==np.inf and cur_val==np.inf:
-                        cost=-1*(strengths[level][j]+strengths[prev_level][i])
-                    elif prev_val==np.inf or cur_val==np.inf:
-                        cost=v_unv_cost-(strengths[level][j]+strengths[prev_level][i])
-                    else:
-                        cost=oct_jump_cost*abs(np.log2(cur_val/prev_val))-(strengths[level][j]+strengths[prev_level][i])
-                    if cost<=best_cost:
-                        best_cost=cost
-                        best_val=prev_val
-                        
-            best_path.append(best_val)
-            total_cost+=best_cost
-            level-=1
-        if total_cost<best_total_cost:
-            best_total_cost=total_cost
-            best_total_path=best_path
-    return best_total_path
-            
-            
-            
-def sinc_interp( x, s, u, time_step ):
+
+def viterbi( cands, strengths, v_unv_cost, oct_jump_cost ):
     """
-    This function uses sinc interpolation to up-sample or down-sample x.
-    
-    Args:
-        x (numpy.ndarray): an array of the signal to be interpolated
-        s (numpy.ndarray): an array of the sampled domain
-        u (numpy.ndarray): an array of the new sampled domain
-        
-    Returns:
-        y (numpy.ndarray): an array of the interpolated signal.
-        
+    Calculates smallest costing path through list of candidates, and returns path.
     """
-    #Find the period    
-    T = time_step
-    #This creates an array of values to use in our interpolation
-    sincM = np.tile( u, ( len( s ), 1 ) ) - np.tile( s[ :, np.newaxis ], ( 1, len( u ) ) )
-    #This calculates interpolated array
-    y = np.dot( x, np.sinc( sincM / T ) )
-    return y
+    best_total_cost = np.inf
+    best_total_path = []
+    
+    for a in range( len( cands[ 0 ] ) ):
+        start_val = cands[ 0 ][ a ]
+        total_path = [ start_val ]
+        total_cost = -1 * strengths[ 0 ][ a ]
+        level = 1
+        
+        while level < len( cands ) :
+            
+            prev_val = total_path[ -1 ]
+            best_cost = np.inf
+            best_val  = np.inf
+            for j in range( len( cands[ level ] ) ):
+                cur_val = cands[ level ][ j ] 
+                
+                if prev_val == np.inf and cur_val == np.inf:
+                    cost = 0
+                elif prev_val == np.inf or cur_val == np.inf:
+                    cost = v_unv_cost 
+                else:
+                    cost = oct_jump_cost * abs( np.log2( prev_val / cur_val ) ) 
+                    
+                cost -= ( strengths[ level ][ j ] )
+                
+                if cost <= best_cost:
+                    best_cost = cost
+                    best_val = cur_val
+                    
+            total_path.append( best_val )
+            total_cost += best_cost
+            level += 1
+        if total_cost < best_total_cost:
+            best_total_cost = total_cost
+            best_total_path = total_path
+
+    return np.array( best_total_path )
+            
