@@ -152,10 +152,9 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         r_w = st.estimated_autocorrelation( window )
         r_x = r_a / r_w
         r_x /= r_x[ 0 ]
-        r_x = r_x[ : int( len( r_x / 2 ) ) ]
         #creating an array of the points in time corresponding to our sampled autocorrelation
         #of the signal (r_x)
-        time_array = np.linspace( 0, window_len , len( r_x ) )
+        time_array = np.linspace( 0, window_len, len( r_x ) )
         i = pu.indexes( r_x )
         maxima_values, maxima_places = r_x[ i ], time_array[ i ]
         max_place_possible = 1. / min_pitch
@@ -215,7 +214,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
 
 
 
-def get_HNR( signal, rate, min_pitch = 75, silence_threshold = .01, periods_per_window = 6):
+def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .1, periods_per_window = 4.5):
     """
     Compute Fundamental Frequency (F_0).
     Algorithm filters out values higher than the Nyquist Frequency, then segments the signal 
@@ -242,6 +241,7 @@ def get_HNR( signal, rate, min_pitch = 75, silence_threshold = .01, periods_per_
         more than 60 dB, but the algorithm becomes more sensitive to dynamic changes in the 
         signal.
         
+        #TODO:throw in new parameters
     Returns:
         float: The mean HNR of the signal.
         
@@ -257,10 +257,7 @@ def get_HNR( signal, rate, min_pitch = 75, silence_threshold = .01, periods_per_
         sig.get_F_0( wave, rate )
     """
     
-    time_step = 1. / rate
-    #total_time = time_step * len( signal )
-    Nyquist_Frequency = 1. / ( time_step * 2 )
-    max_pitch=Nyquist_Frequency
+    
     
     #checking to make sure values are valid
     if min_pitch <= 0:
@@ -269,8 +266,9 @@ def get_HNR( signal, rate, min_pitch = 75, silence_threshold = .01, periods_per_
         raise ValueError( "silence_threshold must be between 0 and 1." )
         
     #filtering by Nyquist Frequency and segmenting signal 
-    Nyquist_Frequency = rate /  2 
-    global_peak = max( abs( signal ) ) 
+    Nyquist_Frequency = rate / 2.0
+    max_pitch = Nyquist_Frequency
+    
     upper_bound = .95 * Nyquist_Frequency
     initial_len = len( signal )
     zeros_pad = 2 ** ( int( np.log2( len( signal ) ) ) + 1 ) - len( signal )
@@ -280,12 +278,15 @@ def get_HNR( signal, rate, min_pitch = 75, silence_threshold = .01, periods_per_
         fft_signal[i]=0
     sig = sf.ifft( fft_signal )
     sig = sig[ :initial_len ]
+    
+    global_peak = max( abs( signal ) ) 
+    
     window_len = periods_per_window / min_pitch
-    segmented_signal = st.segment_signal( window_len, window_len, sig, rate )
+    segmented_signal = st.segment_signal( window_len, time_step, sig, rate )
     
     #initializing list of candidates for HNR
     best_cands = []
-    global_peak = max( abs( sig ) )
+    
     for index in range( len( segmented_signal ) ):
         
         segment = segmented_signal[ index ]
@@ -303,31 +304,34 @@ def get_HNR( signal, rate, min_pitch = 75, silence_threshold = .01, periods_per_
         #creating an array of the points in time corresponding to our sampled autocorrelation
         #of the signal (r_x)
         time_array = np.linspace( 0, window_len, len( r_x ) )
-        
-        #finding maximizers, and maximums and eliminating values that don't produce a 
-        #pitch in the allotted range.
+        i = pu.indexes( r_x )
+        maxima_values, maxima_places = r_x[ i ], time_array[ i ]
         max_place_possible = 1. / min_pitch
         min_place_possible = 1. / max_pitch
 
-        r_x = r_x[ time_array >= min_place_possible ]
-        time_array = time_array[ time_array >= min_place_possible ]
+        maxima_values = maxima_values[ maxima_places >= min_place_possible ]
+        maxima_places = maxima_places[ maxima_places >= min_place_possible ]
         
-        r_x = r_x[ time_array <= max_place_possible ]
-        time_array = time_array[ time_array  <= max_place_possible ]
+        maxima_values = maxima_values[ maxima_places <= max_place_possible ]
+        maxima_places = maxima_places[ maxima_places <= max_place_possible ]
         
-        #values greater than one produce nan values
-        r_x = r_x[ r_x < 1 ]
+        maxima_values = np.hstack(( maxima_values, 1.0 / maxima_values ))
+        maxima_values = maxima_values[ maxima_values < 1 ]
         
+
         #eq. 23 & 24 with octave_cost, and voicing_threshold set to zero
-        strengths = [ max( r_x ), max( 0, 2 - ( ( local_peak / global_peak ) / ( silence_threshold ) ) ) ]
+        if len( maxima_values ) > 0:
+            strengths = [ max( maxima_values ), max( 0, 2 - ( ( local_peak / global_peak ) / ( silence_threshold ) ) ) ]
         #if the maximum strength is the unvoiced candidate, then .5 corresponds to HNR of 0
-        if np.argmax( strengths ):
-            best_cands.append( .5 )  
+            if np.argmax( strengths ):
+                best_cands.append( .5 )  
+            else:
+                best_cands.append( strengths[ 0 ] )
         else:
-            best_cands.append( max( r_x ) )
+            best_cands.append( .5 )
     
     best_cands = np.array( best_cands )
-    best_cands = best_cands[ best_cands >= .5 ]
+    best_cands = best_cands[ best_cands > .5 ]
     if len(best_cands) == 0:
         return 0
     #eq. 4
@@ -336,9 +340,7 @@ def get_HNR( signal, rate, min_pitch = 75, silence_threshold = .01, periods_per_
     return best_candidate
         
 def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600):
-    time_step = 3.0 / min_pitch #might need to change this value later to match up to PointProcess# of periods
-    period, interval = get_F_0( signal, rate, time_step = time_step, min_pitch = min_pitch, 
-                               max_pitch = max_pitch, pulse = True )
+    period, interval = get_F_0( signal, rate, min_pitch = min_pitch, max_pitch = max_pitch, pulse = True )
     points=[]
     total_time = len( signal ) / rate
     time_arr = np.linspace( 0, total_time, len( signal ) )
@@ -351,32 +353,33 @@ def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600):
         T_0 = period[ i ]
         t_mid = ( time_start + time_end ) / 2.0   
         
-        frame_start, frame_end = t_mid - T_0 / 2.0, t_mid + T_0 / 2.0
+        frame_start, frame_end = t_mid - T_0, t_mid + T_0
         
         f_start_index = np.argmin( abs( time_arr - frame_start ) )
         f_end_index   = np.argmin( abs( time_arr - frame_end   ) )
-        while f_start_index != t_start_index :
-            t_index = np.argmax( abs( signal[ f_start_index : f_end_index + 1 ] ) ) + f_start_index
+        while f_start_index >= t_start_index :
+            t_index = np.argmin( signal[ f_start_index : f_end_index + 1 ] ) + f_start_index
             t = time_arr[ t_index ]
             points.append( t )
-            frame_start = max( time_start, t - 1.2 * T_0 / 2.0 )
-            frame_end = t - .8 * T_0 / 2.0
+            frame_start = t - 1.2 * T_0 
+            frame_end   = t - 0.8 * T_0 
             f_start_index = np.argmin( abs( time_arr - frame_start ) )
             f_end_index   = np.argmin( abs( time_arr - frame_end   ) )
             
-        frame_start, frame_end = t_mid - T_0 / 2.0, t_mid + T_0 / 2.0
+        frame_start, frame_end = t_mid - T_0, t_mid + T_0 
         f_start_index = np.argmin( abs( time_arr - frame_start ) )
         f_end_index   = np.argmin( abs( time_arr - frame_end   ) )     
         
-        while f_end_index != t_end_index :
-            t_index = np.argmax( abs( signal[ f_start_index : f_end_index + 1 ] ) ) + f_start_index
-            t = time_arr[ t_index ]
-            points.append( t )
-            frame_start =  t + .8 * T_0 / 2.0 
-            frame_end = min( time_end, t + 1.2 * T_0 / 2.0 )
+        while f_end_index <= t_end_index :
+            frame_start = t + 0.8 * T_0 
+            frame_end   = t + 1.2 * T_0 
             f_start_index = np.argmin( abs( time_arr - frame_start ) )
             f_end_index   = np.argmin( abs( time_arr - frame_end   ) )
-    points = sorted( points )
+            t_index = np.argmin( signal[ f_start_index : f_end_index + 1 ]  ) + f_start_index
+            t = time_arr[ t_index ]
+            points.append( t )
+            
+    points = np.array( sorted( list( set( points ) ) ) )
     return points
 
 
@@ -431,8 +434,7 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
     
     """    
 
-    periods = get_F_0( signal, rate, time_step = .004, jitter = True ) 
-    print(periods, '\n',len(periods))
+    periods = np.diff( get_Pulses( signal, rate ) )
     
     min_period_factor = 1.0 / max_period_factor
     period_variation = []

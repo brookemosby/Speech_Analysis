@@ -55,18 +55,18 @@ def test_get_HNR():
     assert excinfo.value.args[ 0 ] == "The minimum pitch cannot be equal to or less than zero."
     """
     
-    params = [ ( wave1, rate1, 13.935 ),
-               ( wave2, rate2, 9.246 ),
-               ( wave3, rate3, 16.781 ),
-               ( wave4, rate4, 16.440 ),
-               ( np.random.random(10000)*.001, 5000, 0 )]
+    params = [ ( wave1, rate1, 13.083 ),
+               ( wave2, rate2,  9.628 ),
+               ( wave3, rate3, 17.927 ),
+               ( wave4, rate4, 16.206 ),
+               ( np.random.random(1000)*.0001, 500, 0 )]
                            
     for param in params:
         wave, rate, true_val = param
         start = time.clock()
         est_val = sig.get_HNR( wave, rate )
         assert time.clock() - start < 1
-        assert abs( est_val - true_val ) < 3, 'Estimated HNR not within allotted range.'
+        assert abs( est_val - true_val ) < 1, 'Estimated HNR not within allotted range.'
 
 def test_get_Jitter():
     wave_function = lambda x, frequency: np.sin( 2 * np.pi * x * frequency )
@@ -74,10 +74,10 @@ def test_get_Jitter():
     rate = 10000
     wave = wave_function( domain, 50 )
     
-    params = [ ( wave1, rate1, np.array( [ 0.01631, 7.29097e-5, 0.00739, 0.00908, 0.02220 ] ) ),
-               ( wave2, rate2, np.array( [ 0.02043, 6.17719e-5, 0.00824, 0.01022, 0.02475 ] ) ),
-               ( wave3, rate3, np.array( [ 0.01382, 7.25845e-5, 0.00584, 0.00630, 0.01752 ] ) ),
-               ( wave4, rate4, np.array( [ 0.02215, 9.35867e-5, 0.01206, 0.01121, 0.03619 ] ) ) ] 
+    params = [ ( wave1, rate1, np.array( [ 0.046211, 0.000207, 0.023501, 0.028171, 0.070503 ] ) ),
+               ( wave2, rate2, np.array( [ 0.049284, 0.000148, 0.026462, 0.025010, 0.079386 ] ) ),
+               ( wave3, rate3, np.array( [ 0.027097, 0.000141, 0.014425, 0.013832, 0.043274 ] ) ),
+               ( wave4, rate4, np.array( [ 0.034202, 0.000143, 0.019735, 0.018335, 0.059206 ] ) ) ] 
     for param in params:
         wave, rate, true_val = param
         start = time.clock()
@@ -86,5 +86,5 @@ def test_get_Jitter():
         est_val=np.array( list( est_val.values() ) )
         
         #assert time.clock() - start < 6
-        assert np.allclose( est_val , true_val, atol=1e-5, rtol=.15 ) 
+        assert np.allclose( est_val , true_val, atol=0, rtol=.05 ) 
     #for now this works. will need to change later...
