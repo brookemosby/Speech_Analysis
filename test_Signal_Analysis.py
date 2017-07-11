@@ -2,7 +2,6 @@ import Signal_Analysis as sig
 from scipy.io import wavfile
 import numpy as np
 import pytest
-import time
 
 rate1, wave1 = wavfile.read( '03-01-01-01-01-01-10.wav' )
 rate2, wave2 = wavfile.read( '03-01-06-01-01-02-04.wav' )
@@ -30,16 +29,22 @@ def test_get_F_0():
         assert excinfo.value.args[ 0 ] == message
     #This test the case that we have no valid candidates
     assert sig.get_F_0( wave, rate, min_pitch = 400, max_num_cands = 3 ) == 0
-    params = [ ( wave1, rate1, 228.892 ),
-               ( wave2, rate2, 349.444 ),
-               ( wave3, rate3, 182.571 ),
-               ( wave4, rate4, 229.355 ) ]
+    params = [ ( wave1, rate1, { 'accurate'  : False }, 228.892 ),
+               ( wave2, rate2, { 'accurate'  : False }, 349.444 ),
+               ( wave3, rate3, { 'accurate'  : False }, 182.571 ),
+               ( wave4, rate4, { 'accurate'  : False }, 229.355 ),
+               ( wave1, rate1, { 'accurate'  : True  }, 229.936 ),
+               ( wave2, rate2, { 'accurate'  : True  }, 345.517 ),
+               ( wave3, rate3, { 'accurate'  : True  }, 183.453 ),
+               ( wave4, rate4, { 'accurate'  : True  }, 229.729 ),
+               ( wave1, rate1, { 'time_step' : 0     }, 229.862 ),
+               ( wave2, rate2, { 'time_step' : 0     }, 348.380 ),
+               ( wave3, rate3, { 'time_step' : 0     }, 182.465 ),
+               ( wave4, rate4, { 'time_step' : 0     }, 229.198 ) ]
     
     for param in params:
-        wave, rate, true_val = param
-        start = time.clock()
-        est_val = sig.get_F_0( wave, rate )
-        assert time.clock() - start < .25
+        wave, rate, kwargs, true_val = param
+        est_val = sig.get_F_0( wave, rate, **kwargs )
         assert abs( est_val - true_val ) < 5, 'Estimated frequency not within allotted range.'
 
 def test_get_HNR():
@@ -48,25 +53,26 @@ def test_get_HNR():
     domain = np.linspace( 0, 2, 10000 )
     rate = 10000
     wave = wave_function( domain, 50 )
-    """
     with pytest.raises( Exception ) as excinfo:
         sig.get_HNR( wave, rate, min_pitch = 0 )
     assert excinfo.typename == 'ValueError'
     assert excinfo.value.args[ 0 ] == "The minimum pitch cannot be equal to or less than zero."
-    """
+    
+    with pytest.raises( Exception ) as excinfo:
+        sig.get_HNR( wave, rate, silence_threshold = 3 )
+    assert excinfo.typename == 'ValueError'
+    assert excinfo.value.args[ 0 ] == "silence_threshold must be between 0 and 1."
     
     params = [ ( wave1, rate1, 13.083 ),
                ( wave2, rate2,  9.628 ),
                ( wave3, rate3, 17.927 ),
                ( wave4, rate4, 16.206 ),
-               ( np.random.random(1000)*.0001, 500, 0 )]
+               ( np.zeros(500), 500, 0 )]
                            
     for param in params:
         wave, rate, true_val = param
-        start = time.clock()
         est_val = sig.get_HNR( wave, rate )
-        assert time.clock() - start < 1
-        assert abs( est_val - true_val ) < 1, 'Estimated HNR not within allotted range.'
+        assert abs( est_val - true_val ) < .75, 'Estimated HNR not within allotted range.'
 
 def test_get_Jitter():
     wave_function = lambda x, frequency: np.sin( 2 * np.pi * x * frequency )
@@ -80,11 +86,10 @@ def test_get_Jitter():
                ( wave4, rate4, np.array( [ 0.034202, 0.000143, 0.019735, 0.018335, 0.059206 ] ) ) ] 
     for param in params:
         wave, rate, true_val = param
-        start = time.clock()
         est_val = sig.get_Jitter( wave, rate )
         print(est_val)
         est_val=np.array( list( est_val.values() ) )
         
         #assert time.clock() - start < 6
-        assert np.allclose( est_val , true_val, atol=0, rtol=.05 ) 
+        assert np.allclose( est_val , true_val, atol = 0, rtol = .2 ) 
     #for now this works. will need to change later...

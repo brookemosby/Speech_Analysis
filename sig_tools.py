@@ -59,7 +59,6 @@ def estimated_autocorrelation( x ):
     a = a[ :N ]
     return a
 
-
 def viterbi( cands, strengths, v_unv_cost, oct_jump_cost ):
     """
     Calculates smallest costing path through list of candidates, and returns path.

@@ -2,12 +2,10 @@ import sig_tools as st
 import numpy as np
 from scipy import fftpack as sf
 import peakutils as pu
-from matplotlib import pyplot as plt
-from scipy import signal as ss
 
 def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max_num_cands = 15,
-            voicing_threshold = .45, silence_threshold = .03, octave_cost = .01, voiced_unvoiced_cost = .14,
-            octave_jump_cost = .35, accurate = False, jitter = False, pulse = False ):
+            silence_threshold = .03, voicing_threshold = .45, octave_cost = .01, octave_jump_cost = .35,
+            voiced_unvoiced_cost = .14, accurate = False, pulse = False ):
     """
     Compute Fundamental Frequency (F0).
     Algorithm filters out values higher than the Nyquist Frequency, then segments the signal 
@@ -23,6 +21,10 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         
         rate (int): the rate per seconds that the signal was sampled at.
         
+        time_step (float): (default value: 0.04) the measurement interval (frame duration), in seconds. 
+        If you supply 0, Praat will use a time step of 0.75 / (min_pitch), e.g. 0.01 seconds if the 
+        minimum pitch is 75 Hz; in this example, algorithm computes 100 pitch values per second.
+        
         min_pitch (float): (default value: 75) minimum value to be returned as pitch, cannot 
         be less than or equal to zero
         
@@ -33,7 +35,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         considered for each frame, unvoiced candidate (i.e. F_0 equal to zero) is always 
         considered.
         
-        silence_threshold (float): (default value: 0.01) frames that do not contain amplitudes
+        silence_threshold (float): (default value: 0.03) frames that do not contain amplitudes
         above this threshold (relative to the global maximum amplitude), are probably silent.
         
         voicing_threshold (float): (default value: 0.45) the strength of the unvoiced candidate,
@@ -46,18 +48,23 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         equally strong candidates as F0 itself. To more strongly favour recruitment of 
         high-frequency candidates, increase this value.
         
-        octave_jump_cost (float): (default value: 0.15) degree of disfavouring of pitch changes, 
+        octave_jump_cost (float): (default value: 0.35) degree of disfavouring of pitch changes, 
         relative to the maximum possible autocorrelation. To decrease the number of large 
         frequency jumps, increase this value. 
         
-        voiced_unvoiced_cost (float): (default value: 0.005) degree of disfavouring of 
+        voiced_unvoiced_cost (float): (default value: 0.14) degree of disfavouring of 
         voiced/unvoiced transitions, relative to the maximum possible autocorrelation. To 
         decrease the number of voiced/unvoiced transitions, increase this value.
         
-        #TODO:add in a jitter parameter
-        #TODO:add in a pulse parameter
-        #TODO:add in a timestep parameter, also fix sigtools description for segment
-        #TODO:update values for different params.., also throw in the descriptions from praat
+        accurate (bool): (default value: False) if false, the window is a Hanning window with a physical 
+        length of 3 / (min_pitch). If on, the window is a Gaussian window with a physical length of 
+        6 / (min_pitch), i.e. twice the effective length.
+        
+        pulse (bool): (default value: False) if false, returns the median F_0, if True, returns the
+        frequencies for each frame in a list and also a list of tuples containing the beginning time of 
+        the frame, and the ending time of the frame. The indicies in each list correspond to each other.
+            
+        #TODO:also fix sigtools description for segment
         
     Returns:
         float: The median F0 of the signal.
@@ -78,7 +85,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         sig.get_F_0( wave, rate )
     """
     
-    Nyquist_Frequency = rate /  2 
+    Nyquist_Frequency = rate /  2
     global_peak = max( abs( signal ) ) 
     upper_bound = .95 * Nyquist_Frequency
     initial_len = len( signal )
@@ -105,22 +112,13 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
 
     #values are significantly closer to praat's only problem is last one has too low values  
     #segmenting signal into windows that contain 3 periods of minimum pitch
-    if jitter:
-        if time_step == 0:
-            time_step = .25 / min_pitch
-
-        if accurate:
-            window_len = 2.0 / min_pitch
-        else:
-            window_len = 1.0 / min_pitch            
+    if time_step == 0:
+        time_step = .75 / min_pitch
+    
+    if accurate:
+        window_len = 6.0 / min_pitch
     else:
-        if time_step == 0:
-            time_step = .75 / min_pitch
-        
-        if accurate:
-            window_len = 6.0 / min_pitch
-        else:
-            window_len = 3.0 / min_pitch
+        window_len = 3.0 / min_pitch
             
     octave_jump_cost     *= .01 / time_step
     voiced_unvoiced_cost *= .01 / time_step            
@@ -190,6 +188,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
                 
     #using viterbi algorithm to find a path through best set of candidates    
     f_0 = st.viterbi( best_cands, strengths, voiced_unvoiced_cost, octave_jump_cost )
+    
     if pulse:
         removed = 0
         for i in range( len( f_0 ) ):
@@ -200,9 +199,6 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
     f_0 = f_0[ f_0 < np.inf ]
     if pulse:
         return f_0, time_vals
-
-    if jitter:
-        return f_0
     
     if len( f_0 ) == 0:
         return 0
@@ -233,15 +229,14 @@ def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .
         min_pitch (float): (default value: 75) minimum value to be returned as pitch, cannot be 
         less than or equal to zero
                   
-        silence_threshold (float): (default value: 0.01) frames that do not contain amplitudes 
+        silence_threshold (float): (default value: 0.1) frames that do not contain amplitudes 
         above this threshold (relative to the global maximum amplitude), are considered silent.
 
-        periods_per_window (float): (default value: 6) 4.5 is best for speech: HNR values up to
+        periods_per_window (float): (default value: 4.5) 4.5 is best for speech: HNR values up to
         37 dB are guaranteed to be detected reliably; 6 periods per window raises this figure to 
         more than 60 dB, but the algorithm becomes more sensitive to dynamic changes in the 
         signal.
         
-        #TODO:throw in new parameters
     Returns:
         float: The mean HNR of the signal.
         
@@ -266,7 +261,7 @@ def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .
         raise ValueError( "silence_threshold must be between 0 and 1." )
         
     #filtering by Nyquist Frequency and segmenting signal 
-    Nyquist_Frequency = rate / 2.0
+    Nyquist_Frequency = rate / 2
     max_pitch = Nyquist_Frequency
     
     upper_bound = .95 * Nyquist_Frequency
@@ -338,44 +333,62 @@ def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .
     best_cands = 10 * np.log10( best_cands / ( 1 - best_cands ) )
     best_candidate = np.mean( best_cands )
     return best_candidate
-        
+    
+
+
+
+    
 def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600):
-    period, interval = get_F_0( signal, rate, min_pitch = min_pitch, max_pitch = max_pitch, pulse = True )
+    """
+    This algorithm examines voiced intervals of a signal, and creates a list of points that correspond
+    to the sequence of glottal closures in vocal-fold vibration.
+    adapted from: http://www.fon.hum.uva.nl/praat/manual/Sound___Pitch__To_PointProcess__peaks____.html
+    
+    Args:
+        signal (numpy.ndarray): The signal the fundamental frequency will be calculated from.
+        
+        rate (int): the rate per seconds that the signal was sampled at.
+        
+        min_pitch (float): (default value: 75) minimum value to be returned as pitch, cannot 
+        be less than or equal to zero
+        
+        max_pitch (float): (default value: 600) maximum value to be returned as pitch, cannot
+        be greater than Nyquist Frequency     
+        
+    Returns:
+        list: a list of points in a time series that correspond to a signal periodicity
+        
+    Example:
+    ::
+        from scipy.io import wavfile as wav
+        import Signal_Analysis as sig
+        rate, wave = wav.read( 'example_audio_file.wav' )
+        sig.get_Pulses( wave, rate )
+    
+    """
+    period, interval = get_F_0( signal, rate, time_step = 3.0 / min_pitch,
+                               min_pitch = min_pitch, max_pitch = max_pitch, pulse = True )
     points=[]
     total_time = len( signal ) / rate
     time_arr = np.linspace( 0, total_time, len( signal ) )
-    #may need to go through and plot everything to visualize better...
     for i in range( len( period ) ):
-        time_start, time_end = interval[ i ]
-        t_start_index = np.argmin( abs( time_arr - time_start  ) )
-        t_end_index   = np.argmin( abs( time_arr - time_end    ) ) 
-        
+        time_start, time_stop = interval[ i ]
+        t_start_index = int( time_start * rate )
         T_0 = period[ i ]
-        t_mid = ( time_start + time_end ) / 2.0   
+        f_start_index = t_start_index
+        frame_start = time_arr[ f_start_index ]
+        frame_stop  = frame_start + 1.2 * T_0
+        f_stop_index = int( frame_stop * rate + .5 )
+        t_index = np.argmin( signal[ f_start_index : f_stop_index + 1 ]  ) + f_start_index
+        t = time_arr[ t_index ]
+        points.append( t )
         
-        frame_start, frame_end = t_mid - T_0, t_mid + T_0
-        
-        f_start_index = np.argmin( abs( time_arr - frame_start ) )
-        f_end_index   = np.argmin( abs( time_arr - frame_end   ) )
-        while f_start_index >= t_start_index :
-            t_index = np.argmin( signal[ f_start_index : f_end_index + 1 ] ) + f_start_index
-            t = time_arr[ t_index ]
-            points.append( t )
-            frame_start = t - 1.2 * T_0 
-            frame_end   = t - 0.8 * T_0 
-            f_start_index = np.argmin( abs( time_arr - frame_start ) )
-            f_end_index   = np.argmin( abs( time_arr - frame_end   ) )
-            
-        frame_start, frame_end = t_mid - T_0, t_mid + T_0 
-        f_start_index = np.argmin( abs( time_arr - frame_start ) )
-        f_end_index   = np.argmin( abs( time_arr - frame_end   ) )     
-        
-        while f_end_index <= t_end_index :
+        while frame_stop < time_stop:
             frame_start = t + 0.8 * T_0 
-            frame_end   = t + 1.2 * T_0 
-            f_start_index = np.argmin( abs( time_arr - frame_start ) )
-            f_end_index   = np.argmin( abs( time_arr - frame_end   ) )
-            t_index = np.argmin( signal[ f_start_index : f_end_index + 1 ]  ) + f_start_index
+            frame_stop  = t + 1.2 * T_0 
+            f_start_index = int( frame_start * rate )
+            f_stop_index  = int( frame_stop  * rate + .5 )
+            t_index = np.argmin( signal[ f_start_index : f_stop_index + 1 ]  ) + f_start_index
             t = time_arr[ t_index ]
             points.append( t )
             
@@ -393,7 +406,7 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
     point period pertubation quotient (ppq5), and the difference of differences of periods (ddp).
     After each type of jitter has been calculated for each frame the best candidate for each type
     is chosen and returned in a dictionary.
-    This algorithm is adapted from 
+    This algorithm is adapted from  
     http://www.lsi.upc.edu/~nlp/papers/far_jit_07.pdf
     
     Args:
@@ -424,6 +437,7 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
         values corresponding to each type of jitter.
         
     Raises:
+        #TODO:Insert any exemptions if any are written, else remove this
         
     Example:
     ::
@@ -433,11 +447,12 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
         sig.get_Jitter( wave, rate )
     
     """    
-
-    periods = np.diff( get_Pulses( signal, rate ) )
+    pulses = get_Pulses( signal, rate )
+    periods = np.diff( pulses )
     
     min_period_factor = 1.0 / max_period_factor
     period_variation = []
+    
     #finding local, absolute
     for i in range( len( periods ) - 1 ):
         p1 = periods[ i ]
@@ -457,7 +472,7 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
     sum_total = 0
     num_periods = 0
     
-    periods = np.hstack( ( periods[ 0 ], periods, periods[ -1 ] ) )
+    periods = np.hstack(( periods[ 0 ], periods, periods[ -1 ] ))
     for i in range( len( periods ) - 2):
         p1 = periods[ i ]
         p2 = periods[ i + 1 ]
@@ -467,22 +482,15 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
             ratio_1 > min_period_factor and 
             ratio_2 < max_period_factor and 
             ratio_2 > min_period_factor and 
-            p1 < period_ceiling and
             p2 < period_ceiling and
-            p3 < period_ceiling and
-            p1 > period_floor and
-            p2 > period_floor and
-            p3 > period_floor ):
+            p2 > period_floor ):
             
             sum_total += p2
             num_periods += 1
-    
-    avg_period = sum_total / num_periods 
-    print(avg_period)
-    relative = absolute / avg_period
-                      
     periods = periods[ 1 : -1 ]
-    
+    avg_period = sum_total / num_periods 
+    relative = absolute / avg_period
+    print(avg_period,'\t',num_periods,'\t',len(pulses))
     #finding rap
     sum_total = 0
     num_periods = 0
