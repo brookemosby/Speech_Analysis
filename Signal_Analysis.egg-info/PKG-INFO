@@ -1,0 +1,20 @@
+Metadata-Version: 1.1
+Name: Signal-Analysis
+Version: 0.1.1
+Summary: Determines different characteristics of signals.
+Home-page: https://github.com/brookemosby/Speech_Analysis
+Author: Brooke V Mosby
+Author-email: brooke.mosby.byu@gmail.com
+License: MIT
+Description: UNKNOWN
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Other Audience
+Classifier: Natural Language :: English
+Classifier: Operating System :: MacOS
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.5

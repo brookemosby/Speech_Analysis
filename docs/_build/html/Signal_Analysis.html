@@ -1,0 +1,300 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Signal_Analysis package &#8212; Signal_Analysis 0.1.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="signal-analysis-package">
+<h1>Signal_Analysis package<a class="headerlink" href="#signal-analysis-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="signal-analysis-signal-analysis-module">
+<h2>Signal_Analysis.Signal_Analysis module<a class="headerlink" href="#signal-analysis-signal-analysis-module" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="signal-analysis-sig-tools-module">
+<h2>Signal_Analysis.sig_tools module<a class="headerlink" href="#signal-analysis-sig-tools-module" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-Signal_Analysis">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-Signal_Analysis" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="Signal_Analysis.get_F_0">
+<code class="descclassname">Signal_Analysis.</code><code class="descname">get_F_0</code><span class="sig-paren">(</span><em>signal</em>, <em>rate</em>, <em>time_step=0.04</em>, <em>min_pitch=75</em>, <em>max_pitch=600</em>, <em>max_num_cands=15</em>, <em>silence_threshold=0.03</em>, <em>voicing_threshold=0.45</em>, <em>octave_cost=0.01</em>, <em>octave_jump_cost=0.35</em>, <em>voiced_unvoiced_cost=0.14</em>, <em>accurate=False</em>, <em>pulse=False</em><span class="sig-paren">)</span><a class="headerlink" href="#Signal_Analysis.get_F_0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute Fundamental Frequency (F0).
+Algorithm filters out values higher than the Nyquist Frequency, then segments the signal 
+into frames containing at least 3 periods of the minimum pitch. For each frame it then 
+calculates autocorrelation of the signal. After autocorrelation is calculated the maxima 
+values are found. Once these values have been chosen the best candidate for the F0 is 
+picked and then returned.
+This algorithm is adapted from 
+<a class="reference external" href="http://www.fon.hum.uva.nl/david/ba_shs/2010/Boersma_Proceedings_1993.pdf">http://www.fon.hum.uva.nl/david/ba_shs/2010/Boersma_Proceedings_1993.pdf</a></p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd><p class="first">signal (numpy.ndarray): The signal the fundamental frequency will be calculated from.</p>
+<p>rate (int): the rate per seconds that the signal was sampled at.</p>
+<p>time_step (float): (default value: 0.04) the measurement interval (frame duration), in seconds. 
+If you supply 0, Praat will use a time step of 0.75 / (min_pitch), e.g. 0.01 seconds if the 
+minimum pitch is 75 Hz; in this example, algorithm computes 100 pitch values per second.</p>
+<p>min_pitch (float): (default value: 75) minimum value to be returned as pitch, cannot 
+be less than or equal to zero</p>
+<p>max_pitch (float): (default value: 600) maximum value to be returned as pitch, cannot
+be greater than Nyquist Frequency</p>
+<p>max_num_cands (int): (default value: 15) maximum number of candidates to be 
+considered for each frame, unvoiced candidate (i.e. F_0 equal to zero) is always 
+considered.</p>
+<p>silence_threshold (float): (default value: 0.03) frames that do not contain amplitudes
+above this threshold (relative to the global maximum amplitude), are probably silent.</p>
+<p>voicing_threshold (float): (default value: 0.45) the strength of the unvoiced candidate,
+relative to the maximum possible autocorrelation. To increase the number of unvoiced 
+decisions, increase this value.</p>
+<p>octave_cost (float): (default value: 0.01 per octave) degree of favouring of 
+high-frequency candidates, relative to the maximum possible autocorrelation. This is 
+necessary because in the case of a perfectly periodic signal, all undertones of F0 are 
+equally strong candidates as F0 itself. To more strongly favour recruitment of 
+high-frequency candidates, increase this value.</p>
+<p>octave_jump_cost (float): (default value: 0.35) degree of disfavouring of pitch changes, 
+relative to the maximum possible autocorrelation. To decrease the number of large 
+frequency jumps, increase this value.</p>
+<p>voiced_unvoiced_cost (float): (default value: 0.14) degree of disfavouring of 
+voiced/unvoiced transitions, relative to the maximum possible autocorrelation. To 
+decrease the number of voiced/unvoiced transitions, increase this value.</p>
+<p>accurate (bool): (default value: False) if false, the window is a Hanning window with a physical 
+length of 3 / (min_pitch). If on, the window is a Gaussian window with a physical length of 
+6 / (min_pitch), i.e. twice the effective length.</p>
+<p class="last">pulse (bool): (default value: False) if false, returns the median F_0, if True, returns the
+frequencies for each frame in a list and also a list of tuples containing the beginning time of 
+the frame, and the ending time of the frame. The indicies in each list correspond to each other.</p>
+</dd>
+<dt>Returns:</dt>
+<dd>float: The median F0 of the signal.</dd>
+<dt>Raises:</dt>
+<dd>ValueError: The maximum pitch cannot be greater than the Nyquist Frequency.
+ValueError: The minimum pitch cannot be equal or less than zero.
+ValueError: The minimum number of candidates is 2.
+ValueError: octave_cost must be between 0 and 1.
+ValueError: silence_threshold must be between 0 and 1.
+ValueError: voicing_threshold must be between 0 and 1.</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">scipy.io</span> <span class="k">import</span> <span class="n">wavfile</span> <span class="k">as</span> <span class="n">wav</span>
+<span class="kn">import</span> <span class="nn">Signal_Analysis</span> <span class="k">as</span> <span class="nn">sig</span>
+<span class="n">rate</span><span class="p">,</span> <span class="n">wave</span> <span class="o">=</span> <span class="n">wav</span><span class="o">.</span><span class="n">read</span><span class="p">(</span> <span class="s1">&#39;example_audio_file.wav&#39;</span> <span class="p">)</span>
+<span class="n">sig</span><span class="o">.</span><span class="n">get_F_0</span><span class="p">(</span> <span class="n">wave</span><span class="p">,</span> <span class="n">rate</span> <span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="Signal_Analysis.get_HNR">
+<code class="descclassname">Signal_Analysis.</code><code class="descname">get_HNR</code><span class="sig-paren">(</span><em>signal</em>, <em>rate</em>, <em>time_step=0.01</em>, <em>min_pitch=75</em>, <em>silence_threshold=0.1</em>, <em>periods_per_window=4.5</em><span class="sig-paren">)</span><a class="headerlink" href="#Signal_Analysis.get_HNR" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute Fundamental Frequency (F_0).
+Algorithm filters out values higher than the Nyquist Frequency, then segments the signal 
+into frames containing at least 3 periods of the minimum pitch. For each frame it then 
+calculates autocorrelation of the signal. After autocorrelation is calculated the maxima 
+values are found. Once these values have been chosen the best candidate for the F_0 is 
+picked and then returned.
+This algorithm is adapted from 
+<a class="reference external" href="http://www.fon.hum.uva.nl/david/ba_shs/2010/Boersma_Proceedings_1993.pdf">http://www.fon.hum.uva.nl/david/ba_shs/2010/Boersma_Proceedings_1993.pdf</a></p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd><p class="first">signal (numpy.ndarray): The signal the fundamental frequency will be calculated from.</p>
+<p>rate (int): the rate per seconds that the signal was sampled at.</p>
+<p>min_pitch (float): (default value: 75) minimum value to be returned as pitch, cannot be 
+less than or equal to zero</p>
+<p>silence_threshold (float): (default value: 0.1) frames that do not contain amplitudes 
+above this threshold (relative to the global maximum amplitude), are considered silent.</p>
+<p class="last">periods_per_window (float): (default value: 4.5) 4.5 is best for speech: HNR values up to
+37 dB are guaranteed to be detected reliably; 6 periods per window raises this figure to 
+more than 60 dB, but the algorithm becomes more sensitive to dynamic changes in the 
+signal.</p>
+</dd>
+<dt>Returns:</dt>
+<dd>float: The mean HNR of the signal.</dd>
+<dt>Raises:</dt>
+<dd>ValueError: The minimum pitch cannot be equal or less than zero.
+ValueError: silence_threshold must be between 0 and 1.</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">scipy.io</span> <span class="k">import</span> <span class="n">wavfile</span> <span class="k">as</span> <span class="n">wav</span>
+<span class="kn">import</span> <span class="nn">Signal_Analysis</span> <span class="k">as</span> <span class="nn">sig</span>
+<span class="n">rate</span><span class="p">,</span> <span class="n">wave</span> <span class="o">=</span> <span class="n">wav</span><span class="o">.</span><span class="n">read</span><span class="p">(</span> <span class="s1">&#39;example_audio_file.wav&#39;</span> <span class="p">)</span>
+<span class="n">sig</span><span class="o">.</span><span class="n">get_F_0</span><span class="p">(</span> <span class="n">wave</span><span class="p">,</span> <span class="n">rate</span> <span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="Signal_Analysis.get_Jitter">
+<code class="descclassname">Signal_Analysis.</code><code class="descname">get_Jitter</code><span class="sig-paren">(</span><em>signal</em>, <em>rate</em>, <em>period_floor=0.0001</em>, <em>period_ceiling=0.02</em>, <em>max_period_factor=1.3</em><span class="sig-paren">)</span><a class="headerlink" href="#Signal_Analysis.get_Jitter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute Jitter, random pertubations in period length.
+Algorithm filters out values higher than the Nyquist Frequency, then segments the signal
+into frames containing at least 3 periods of period ceiling. For each frame it 
+calculates absolute jitter, relative jitter, relative average perturbation (rap), the 5-
+point period pertubation quotient (ppq5), and the difference of differences of periods (ddp).
+After each type of jitter has been calculated for each frame the best candidate for each type
+is chosen and returned in a dictionary.
+This algorithm is adapted from  
+<a class="reference external" href="http://www.lsi.upc.edu/~nlp/papers/far_jit_07.pdf">http://www.lsi.upc.edu/~nlp/papers/far_jit_07.pdf</a></p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd><p class="first">signal (numpy.ndarray): The signal the fundamental frequency will be calculated from.</p>
+<p>rate (int): the rate per seconds that the signal was sampled at.</p>
+<p>period_floor (float): (default value: .0001) the shortest possible interval that will be 
+used in the computation of jitter, in seconds. If an interval is shorter than this, it 
+will be ignored in the computation of jitter (and the previous and next intervals will 
+not be regarded as consecutive). This setting will normally be very small, say 0.1 ms.</p>
+<p>period_ceiling (float): (default value: .02) the longest possible interval that will be 
+used in the computation of jitter, in seconds. If an interval is longer than this, it 
+will be ignored in the computation of jitter (and the previous and next intervals will 
+not be regarded as consecutive). For example, if the minimum frequency of periodicity 
+is 50 Hz, set this setting to 0.02 seconds; intervals longer than that could be regarded
+as voiceless stretches and will be ignored in the computation.</p>
+<p class="last">max_period_factor (float): (default value: 1.3) the largest possible difference between 
+consecutive intervals that will be used in the computation of jitter. If the ratio of the
+durations of two consecutive intervals is greater than this, this pair of intervals will 
+be ignored in the computation of jitter (each of the intervals could still take part in 
+the computation of jitter in a comparison with its neighbour on the other side).</p>
+</dd>
+<dt>Returns:</dt>
+<dd>dict: a dictionary with keys: &#8216;local&#8217;, &#8216;local, absolute&#8217;, &#8216;rap&#8217;, &#8216;ppq5&#8217;, and &#8216;ddp&#8217; and 
+values corresponding to each type of jitter.</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">scipy.io</span> <span class="k">import</span> <span class="n">wavfile</span> <span class="k">as</span> <span class="n">wav</span>
+<span class="kn">import</span> <span class="nn">Signal_Analysis</span> <span class="k">as</span> <span class="nn">sig</span>
+<span class="n">rate</span><span class="p">,</span> <span class="n">wave</span> <span class="o">=</span> <span class="n">wav</span><span class="o">.</span><span class="n">read</span><span class="p">(</span> <span class="s1">&#39;example_audio_file.wav&#39;</span> <span class="p">)</span>
+<span class="n">sig</span><span class="o">.</span><span class="n">get_Jitter</span><span class="p">(</span> <span class="n">wave</span><span class="p">,</span> <span class="n">rate</span> <span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="Signal_Analysis.get_Pulses">
+<code class="descclassname">Signal_Analysis.</code><code class="descname">get_Pulses</code><span class="sig-paren">(</span><em>signal</em>, <em>rate</em>, <em>min_pitch=75</em>, <em>max_pitch=600</em>, <em>include_maxima=False</em>, <em>include_minima=True</em><span class="sig-paren">)</span><a class="headerlink" href="#Signal_Analysis.get_Pulses" title="Permalink to this definition">¶</a></dt>
+<dd><p>This algorithm examines voiced intervals of a signal, and creates a list of points that correspond
+to the sequence of glottal closures in vocal-fold vibration.
+adapted from: <a class="reference external" href="https://pdfs.semanticscholar.org/16d5/980ba1cf168d5782379692517250e80f0082.pdf">https://pdfs.semanticscholar.org/16d5/980ba1cf168d5782379692517250e80f0082.pdf</a></p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd><p class="first">signal (numpy.ndarray): The signal the fundamental frequency will be calculated from.</p>
+<p>rate (int): the rate per seconds that the signal was sampled at.</p>
+<p>min_pitch (float): (default value: 75) minimum value to be returned as pitch, cannot 
+be less than or equal to zero</p>
+<p class="last">max_pitch (float): (default value: 600) maximum value to be returned as pitch, cannot
+be greater than Nyquist Frequency</p>
+</dd>
+<dt>Returns:</dt>
+<dd>list: a list of points in a time series that correspond to a signal periodicity</dd>
+<dt>Raises:</dt>
+<dd>ValueError: At least one of include_minima or include_maxima must set to True.</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">scipy.io</span> <span class="k">import</span> <span class="n">wavfile</span> <span class="k">as</span> <span class="n">wav</span>
+<span class="kn">import</span> <span class="nn">Signal_Analysis</span> <span class="k">as</span> <span class="nn">sig</span>
+<span class="n">rate</span><span class="p">,</span> <span class="n">wave</span> <span class="o">=</span> <span class="n">wav</span><span class="o">.</span><span class="n">read</span><span class="p">(</span> <span class="s1">&#39;example_audio_file.wav&#39;</span> <span class="p">)</span>
+<span class="n">sig</span><span class="o">.</span><span class="n">get_Pulses</span><span class="p">(</span> <span class="n">wave</span><span class="p">,</span> <span class="n">rate</span> <span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Signal_Analysis package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#signal-analysis-signal-analysis-module">Signal_Analysis.Signal_Analysis module</a></li>
+<li><a class="reference internal" href="#signal-analysis-sig-tools-module">Signal_Analysis.sig_tools module</a></li>
+<li><a class="reference internal" href="#module-Signal_Analysis">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/Signal_Analysis.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Brooke Mosby.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/Signal_Analysis.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
