@@ -63,8 +63,6 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         pulse (bool): (default value: False) if false, returns the median F_0, if True, returns the
         frequencies for each frame in a list and also a list of tuples containing the beginning time of 
         the frame, and the ending time of the frame. The indicies in each list correspond to each other.
-            
-        #TODO:also fix sigtools description for segment
         
     Returns:
         float: The median F0 of the signal.
@@ -92,10 +90,11 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
     zeros_pad = 2 ** ( int( np.log2( len( signal ) ) ) + 1 ) - len( signal )
     signal = np.hstack( ( signal, np.zeros( zeros_pad ) ) )
     fft_signal = sf.fft( signal )
-    for i in range(int(upper_bound),int(initial_len/2)):
-        fft_signal[i]=0
+    for i in range( int( upper_bound ), int( initial_len / 2 ) ):
+        fft_signal[ i ] = 0
     sig = sf.ifft( fft_signal )
     sig = sig[ :initial_len ]
+    
     #checking to make sure values are valid
     if Nyquist_Frequency < max_pitch:
         raise ValueError( "The maximum pitch cannot be greater than the Nyquist Frequency." )
@@ -109,8 +108,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         raise ValueError( "The minimum pitch cannot be equal or less than zero." )
     if silence_threshold < 0 or silence_threshold > 1:
         raise ValueError( "silence_threshold must be between 0 and 1." )
-
-    #values are significantly closer to praat's only problem is last one has too low values  
+        
     #segmenting signal into windows that contain 3 periods of minimum pitch
     if time_step == 0:
         time_step = .75 / min_pitch
@@ -269,8 +267,8 @@ def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .
     zeros_pad = 2 ** ( int( np.log2( len( signal ) ) ) + 1 ) - len( signal )
     signal = np.hstack( ( signal, np.zeros( zeros_pad ) ) )
     fft_signal = sf.fft( signal )
-    for i in range(int(upper_bound),int(initial_len/2)):
-        fft_signal[i]=0
+    for i in range( int( upper_bound ), int( initial_len / 2 ) ):
+        fft_signal[ i ] = 0
     sig = sf.ifft( fft_signal )
     sig = sig[ :initial_len ]
     
@@ -338,11 +336,11 @@ def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .
 
 
     
-def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600):
+def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600, include_maxima = False, include_minima = True ):
     """
     This algorithm examines voiced intervals of a signal, and creates a list of points that correspond
     to the sequence of glottal closures in vocal-fold vibration.
-    adapted from: http://www.fon.hum.uva.nl/praat/manual/Sound___Pitch__To_PointProcess__peaks____.html
+    adapted from: https://pdfs.semanticscholar.org/16d5/980ba1cf168d5782379692517250e80f0082.pdf
     
     Args:
         signal (numpy.ndarray): The signal the fundamental frequency will be calculated from.
@@ -357,6 +355,9 @@ def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600):
         
     Returns:
         list: a list of points in a time series that correspond to a signal periodicity
+    
+    Raises:
+        ValueError: At least one of include_minima or include_maxima must set to True.
         
     Example:
     ::
@@ -366,32 +367,54 @@ def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600):
         sig.get_Pulses( wave, rate )
     
     """
+    #first calculate F_0 estimates for each voiced interval
+    if not include_maxima and not include_minima:
+        raise ValueError( "At least one of include_minima or include_maxima must set to True." )
     period, interval = get_F_0( signal, rate, time_step = 3.0 / min_pitch,
                                min_pitch = min_pitch, max_pitch = max_pitch, pulse = True )
     points=[]
     total_time = len( signal ) / rate
     time_arr = np.linspace( 0, total_time, len( signal ) )
+    #Then for each voiced interval calculate all pulses
     for i in range( len( period ) ):
         time_start, time_stop = interval[ i ]
+        #finding the starting index for this voiced interval
         t_start_index = int( time_start * rate )
         T_0 = period[ i ]
+        #assigning the start of our frame to the start of the voiced interval
         f_start_index = t_start_index
         frame_start = time_arr[ f_start_index ]
-        frame_stop  = frame_start + 1.2 * T_0
+        #assigning the end of our frame to the elapsed time of the period, with some cushion room
+        frame_stop  = frame_start + 1.25 * T_0
         f_stop_index = int( frame_stop * rate + .5 )
-        t_index = np.argmin( signal[ f_start_index : f_stop_index + 1 ]  ) + f_start_index
+        #finding our minima, maxima, or absolute maxima in this frame dependent on what parameters
+        #were passed in
+        if include_minima and not include_maxima:
+            t_index = np.argmin( signal[ f_start_index : f_stop_index + 1 ]  ) + f_start_index
+        elif include_maxima and not include_minima:
+            t_index = np.argmax( signal[ f_start_index : f_stop_index + 1 ]  ) + f_start_index
+        else:
+            t_index = np.argmax( abs( signal[ f_start_index : f_stop_index + 1 ] )  ) + f_start_index
         t = time_arr[ t_index ]
         points.append( t )
         
+        #until we have reached the end of our voiced interval, continued looking at frames and picking
+        #the best candidate for glottal pulse
         while frame_stop < time_stop:
-            frame_start = t + 0.8 * T_0 
-            frame_stop  = t + 1.2 * T_0 
+            frame_start = t + 0.75 * T_0 
+            frame_stop  = t + 1.25 * T_0 
             f_start_index = int( frame_start * rate )
             f_stop_index  = int( frame_stop  * rate + .5 )
-            t_index = np.argmin( signal[ f_start_index : f_stop_index + 1 ]  ) + f_start_index
+            if include_minima and not include_maxima:
+                t_index = np.argmin( signal[ f_start_index : f_stop_index + 1 ]  ) + f_start_index
+            elif include_maxima and not include_minima:
+                t_index = np.argmax( signal[ f_start_index : f_stop_index + 1 ]  ) + f_start_index
+            else:
+                t_index = np.argmax( abs( signal[ f_start_index : f_stop_index + 1 ] )  ) + f_start_index
             t = time_arr[ t_index ]
             points.append( t )
             
+    #return the array of pulses (sorted and unique)
     points = np.array( sorted( list( set( points ) ) ) )
     return points
 
@@ -436,9 +459,6 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
         dict: a dictionary with keys: 'local', 'local, absolute', 'rap', 'ppq5', and 'ddp' and 
         values corresponding to each type of jitter.
         
-    Raises:
-        #TODO:Insert any exemptions if any are written, else remove this
-        
     Example:
     ::
         from scipy.io import wavfile as wav
@@ -454,6 +474,7 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
     period_variation = []
     
     #finding local, absolute
+    #described at: http://www.fon.hum.uva.nl/praat/manual/PointProcess__Get_jitter__local__absolute____.html
     for i in range( len( periods ) - 1 ):
         p1 = periods[ i ]
         p2 = periods[ i + 1 ]
@@ -468,7 +489,8 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
                 
     absolute = np.mean( period_variation )
     
-    #finding local
+    #finding local, 
+    #described at: http://www.fon.hum.uva.nl/praat/manual/PointProcess__Get_jitter__local____.html
     sum_total = 0
     num_periods = 0
     
@@ -490,8 +512,9 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
     periods = periods[ 1 : -1 ]
     avg_period = sum_total / num_periods 
     relative = absolute / avg_period
-    print(avg_period,'\t',num_periods,'\t',len(pulses))
+    
     #finding rap
+    #described at: http://www.fon.hum.uva.nl/praat/manual/PointProcess__Get_jitter__rap____.html
     sum_total = 0
     num_periods = 0
     
@@ -516,6 +539,7 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
     rap = ( sum_total / num_periods ) / avg_period 
           
     #finding ppq5
+    #described at: http://www.fon.hum.uva.nl/praat/manual/PointProcess__Get_jitter__ppq5____.html
     sum_total = 0
     num_periods = 0
     
@@ -574,15 +598,8 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
 
 
 
-
-
-
-
-#TODO: for jitter we want to return all 5 types, in a dictionary with key being the type of jitter
-#TODO:look up fixtures in python testing, maybe ask david if not sure about it...
-#TODO: need to document test file better 
 #TODO: get code put up github/travis/coveralls...   
 #TODO: clone repo, put on github-> goes in super ai->afx->features (in my fork, ask when ready to merge fork)
-#TODO: travis and coveralls, he will get a key for me to put it on privately(only for coveralls), which I don't have yet so maybe don't work on this.
+#TODO: need to get a key for me to put it on privately(only for coveralls)
 #which I can put up once I have finished all the features
 #TODO: update github pages so that I can post other things on there besides just titanic
