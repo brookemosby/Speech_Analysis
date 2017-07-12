@@ -1,12 +1,20 @@
-from scipy.io import wavfile
+from scipy.io import matlab
 import numpy as np
 import pytest
 import Signal_Analysis as sig
 
-rate1, wave1 = wavfile.read( 'tests/03-01-01-01-01-01-10.wav' )
-rate2, wave2 = wavfile.read( open( 'tests/03-01-06-01-01-02-04.wav', 'r' ) )
-rate3, wave3 = wavfile.read( 'tests/OAF_youth_sad.wav' )
-rate4, wave4 = wavfile.read( 'tests/YAF_kite_sad.wav' )
+dict1 = matlab.loadmat( 'tests/03-01-01-01-01-01-10.mat' )
+rate1 = dict1[ 'Fs' ][ 0 ][ 0 ]
+wave1 = dict1[ 'y' ]
+dict2 = matlab.loadmat( 'tests/03-01-06-01-01-02-04.mat' )
+rate2 = dict2[ 'Fs' ][ 0 ][ 0 ]
+wave2 = dict2[ 'y' ]
+dict3 = matlab.loadmat( 'tests/OAF_youth_sad.mat' )
+rate3 = dict3[ 'Fs' ][ 0 ][ 0 ]
+wave3 = dict3[ 'y' ]
+dict4 = matlab.loadmat( 'tests/YAF_kite_sad.mat' )
+rate4 = dict4[ 'Fs' ][ 0 ][ 0 ]
+wave4 = dict4[ 'y' ]
 
 def test_get_F_0():
     #Here we test all the exceptions using wave1 & rate1 created above 
