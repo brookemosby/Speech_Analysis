@@ -2,7 +2,7 @@ from scipy.io import matlab
 import numpy as np
 import pytest
 import Signal_Analysis.Signal_Analysis as sig
-
+"""
 dict1 = matlab.loadmat( 'tests/03-01-01-01-01-01-10.mat' )
 rate1 = dict1[ 'Fs' ][ 0 ][ 0 ]
 wave1 = dict1[ 'y' ].ravel()
@@ -15,7 +15,11 @@ wave3 = dict3[ 'y' ].ravel()
 dict4 = matlab.loadmat( 'tests/YAF_kite_sad.mat' )
 rate4 = dict4[ 'Fs' ][ 0 ][ 0 ]
 wave4 = dict4[ 'y' ].ravel()
-
+"""
+rate1, wave1 = wavfile.read( 'tests/03-01-01-01-01-01-10.wav' )
+rate2, wave2 = wavfile.read( 'tests/03-01-06-01-01-02-04.wav' )
+rate3, wave3 = wavfile.read( 'tests/OAF_youth_sad.wav' )
+rate4, wave4 = wavfile.read( 'tests/YAF_kite_sad.wav' )
 def test_get_F_0():
     #Here we test all the exceptions using wave1 & rate1 created above 
     params = [ ( "The maximum pitch cannot be greater than the Nyquist Frequency.",   { 'max_pitch'         : 200000 } ),
