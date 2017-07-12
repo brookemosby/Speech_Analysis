@@ -1,6 +1,6 @@
 import numpy as np
 import peakutils as pu
-from Signal_Analysis import sig_tools as st
+import Signal_Analysis.sig_tools as st
 
 def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max_num_cands = 15,
             silence_threshold = .03, voicing_threshold = .45, octave_cost = .01, octave_jump_cost = .35,
