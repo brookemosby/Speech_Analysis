@@ -1,4 +1,5 @@
 from scipy.io import matlab
+from scipy.io import wavfile
 import numpy as np
 import pytest
 import Signal_Analysis.Signal_Analysis as sig
