@@ -5,16 +5,16 @@ import Signal_Analysis as sig
 
 dict1 = matlab.loadmat( 'tests/03-01-01-01-01-01-10.mat' )
 rate1 = dict1[ 'Fs' ][ 0 ][ 0 ]
-wave1 = dict1[ 'y' ]
+wave1 = dict1[ 'y' ].ravel()
 dict2 = matlab.loadmat( 'tests/03-01-06-01-01-02-04.mat' )
 rate2 = dict2[ 'Fs' ][ 0 ][ 0 ]
-wave2 = dict2[ 'y' ]
+wave2 = dict2[ 'y' ].ravel()
 dict3 = matlab.loadmat( 'tests/OAF_youth_sad.mat' )
 rate3 = dict3[ 'Fs' ][ 0 ][ 0 ]
-wave3 = dict3[ 'y' ]
+wave3 = dict3[ 'y' ].ravel()
 dict4 = matlab.loadmat( 'tests/YAF_kite_sad.mat' )
 rate4 = dict4[ 'Fs' ][ 0 ][ 0 ]
-wave4 = dict4[ 'y' ]
+wave4 = dict4[ 'y' ].ravel()
 
 def test_get_F_0():
     #Here we test all the exceptions using wave1 & rate1 created above 
