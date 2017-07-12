@@ -603,7 +603,7 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
 
 
 
-#TODO: get code put up github/travis/coveralls...   
+#TODO: get code put up github/travis?/coveralls...   
 #TODO: clone repo, put on github-> goes in super ai->afx->features (in my fork, ask when ready to merge fork)
 #TODO: need to get a key for me to put it on privately(only for coveralls)
 #which I can put up once I have finished all the features
