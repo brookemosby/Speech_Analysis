@@ -1,0 +1,18 @@
+
+sudo: true
+addons:
+    apt:
+        packages:
+language: python
+cache: pip
+python:
+  - "2.7"
+  - "3.5"
+# command to install dependencies
+install:
+  - pip install --upgrade -r requirements.txt
+  - pip install coveralls
+# command to run tests
+before_script:
+script: coverage run --source=Signal_Analysis -m pytest
+after_success: coveralls
