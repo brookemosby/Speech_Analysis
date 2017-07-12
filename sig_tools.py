@@ -1,5 +1,4 @@
 import numpy as np
-import scipy.fftpack as sf
 
 def gaussian( length, T ):
     """
@@ -67,8 +66,8 @@ def estimated_autocorrelation( x ):
     N = len( x )
     x = np.hstack( ( x, np.zeros( int( N / 2 ) ) ) )
     x = np.hstack( ( x, np.zeros( 2 ** ( int( np.log2( N ) + 1 ) ) - N ) ) )            
-    s = sf.fft( x )
-    a = np.real( sf.fft( s * np.conjugate( s ) ) )
+    s = np.fft.fft( x )
+    a = np.real( np.fft.fft( s * np.conjugate( s ) ) )
     a = a[ :N ]
     return a
 

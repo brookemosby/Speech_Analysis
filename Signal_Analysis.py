@@ -1,6 +1,5 @@
 import sig_tools as st
 import numpy as np
-from scipy import fftpack as sf
 import peakutils as pu
 
 def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max_num_cands = 15,
@@ -89,10 +88,10 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
     initial_len = len( signal )
     zeros_pad = 2 ** ( int( np.log2( len( signal ) ) ) + 1 ) - len( signal )
     signal = np.hstack( ( signal, np.zeros( zeros_pad ) ) )
-    fft_signal = sf.fft( signal )
+    fft_signal = np.fft.fft( signal )
     for i in range( int( upper_bound ), int( initial_len / 2 ) ):
         fft_signal[ i ] = 0
-    sig = sf.ifft( fft_signal )
+    sig = np.fft.ifft( fft_signal )
     sig = sig[ :initial_len ]
     
     #checking to make sure values are valid
@@ -266,10 +265,10 @@ def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .
     initial_len = len( signal )
     zeros_pad = 2 ** ( int( np.log2( len( signal ) ) ) + 1 ) - len( signal )
     signal = np.hstack( ( signal, np.zeros( zeros_pad ) ) )
-    fft_signal = sf.fft( signal )
+    fft_signal = np.fft.fft( signal )
     for i in range( int( upper_bound ), int( initial_len / 2 ) ):
         fft_signal[ i ] = 0
-    sig = sf.ifft( fft_signal )
+    sig = np.fft.ifft( fft_signal )
     sig = sig[ :initial_len ]
     
     global_peak = max( abs( signal ) ) 
