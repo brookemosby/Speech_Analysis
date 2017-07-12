@@ -4,7 +4,7 @@ import pytest
 import Signal_Analysis as sig
 
 rate1, wave1 = wavfile.read( 'tests/03-01-01-01-01-01-10.wav' )
-rate2, wave2 = wavfile.read( 'tests/03-01-06-01-01-02-04.wav' )
+rate2, wave2 = wavfile.read( open( 'tests/03-01-06-01-01-02-04.wav', 'r' ) )
 rate3, wave3 = wavfile.read( 'tests/OAF_youth_sad.wav' )
 rate4, wave4 = wavfile.read( 'tests/YAF_kite_sad.wav' )
 
