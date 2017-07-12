@@ -120,10 +120,13 @@ def test_get_Jitter():
                ( wave2, rate2, np.array( [ 0.049284, 0.000148, 0.026462, 0.025010, 0.079386 ] ) ),
                ( wave3, rate3, np.array( [ 0.027097, 0.000141, 0.014425, 0.013832, 0.043274 ] ) ),
                ( wave4, rate4, np.array( [ 0.034202, 0.000143, 0.019735, 0.018335, 0.059206 ] ) ) ] 
-    
+    #TODO: jitter dictionary doesnt return values in exact order
     for param in params:
         wave, rate, true_val = param
         est_val = sig.get_Jitter( wave, rate )
-        est_val=np.array( list( est_val.values() ) )
         #we allow a 10.5% error tolerance
-        assert np.allclose( est_val , true_val, atol = 0, rtol = .105 ) 
+        assert abs( est_val[ 'local' ] -            true_val[ 0 ] )  < .105 * true_val[ 0 ]
+        assert abs( est_val[ 'local, absolute' ] -  true_val[ 1 ] )  < .105 * true_val[ 1 ]
+        assert abs( est_val[ 'rap' ] -              true_val[ 2 ] )  < .105 * true_val[ 2 ]
+        assert abs( est_val[ 'ppq5' ] -             true_val[ 3 ] )  < .105 * true_val[ 3 ]
+        assert abs( est_val[ 'ddp' ] -              true_val[ 4 ] )  < .105 * true_val[ 4 ]
