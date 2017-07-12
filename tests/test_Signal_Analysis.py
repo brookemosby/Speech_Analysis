@@ -2,6 +2,7 @@ from scipy.io import matlab
 import numpy as np
 import pytest
 import Signal_Analysis.Signal_Analysis as sig
+import Signal_Analysis.sig_tools
 dict1 = matlab.loadmat( 'tests/03-01-01-01-01-01-10.mat' )
 rate1 = dict1[ 'Fs' ][ 0 ][ 0 ]
 wave1 = dict1[ 'y' ].ravel()
