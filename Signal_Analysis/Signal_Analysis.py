@@ -509,12 +509,14 @@ def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600, include_maxima = F
         f_stop_index = int( frame_stop * rate + .5 )
         #finding our minima, maxima, or absolute maxima in this frame dependent on what parameters
         #were passed in
+        frame = signal[ f_start_index : f_stop_index + 1 ]
+        print( frame )
         if include_minima and not include_maxima:
-            t_index = np.argmin( signal[ f_start_index : f_stop_index + 1 ]  ) + f_start_index
+            t_index = np.argmin( frame ) + f_start_index
         elif include_maxima and not include_minima:
-            t_index = np.argmax( signal[ f_start_index : f_stop_index + 1 ]  ) + f_start_index
+            t_index = np.argmax( frame ) + f_start_index
         else:
-            t_index = np.argmax( abs( signal[ f_start_index : f_stop_index + 1 ] )  ) + f_start_index
+            t_index = np.argmax( abs( frame ) ) + f_start_index
         t = time_arr[ t_index ]
         points.append( t )
         
