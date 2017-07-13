@@ -86,7 +86,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         rate, wave = wav.read( 'example_audio_file.wav' )
         sig.get_F_0( wave, rate )
     """
-    
+    print(min_pitch)
     Nyquist_Frequency = rate /  2.0
     global_peak = max( abs( signal ) ) 
     upper_bound = .95 * Nyquist_Frequency
@@ -193,17 +193,17 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         time_array = np.linspace( 0, window_len, len( r_x ) )
         i = pu.indexes( r_x )
         maxima_values, maxima_places = r_x[ i ], time_array[ i ]
-        
+        print(maxima_values)
         max_place_possible = 1.0 / min_pitch
         min_place_possible = 1.0 / max_pitch
-        print(min_pitch)
+        print(min_pitch, max_pitch)
         
         maxima_values = maxima_values[ maxima_places >= min_place_possible ]
         maxima_places = maxima_places[ maxima_places >= min_place_possible ]
         
         maxima_values = maxima_values[ maxima_places <= max_place_possible ]
         maxima_places = maxima_places[ maxima_places <= max_place_possible ]
-        
+        print(maxima_values)
         
         if len( maxima_values ) > 0:
             #finding the max_num_cands-1 maximizers, and maximums, then calculating their
