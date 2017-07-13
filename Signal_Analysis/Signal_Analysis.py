@@ -196,16 +196,13 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         
         max_place_possible = 1.0 / min_pitch
         min_place_possible = 1.0 / max_pitch
-        print(maxima_values)
         print(min_pitch)
-        print(max_place_possible,min_place_possible)
         
         maxima_values = maxima_values[ maxima_places >= min_place_possible ]
         maxima_places = maxima_places[ maxima_places >= min_place_possible ]
         
         maxima_values = maxima_values[ maxima_places <= max_place_possible ]
         maxima_places = maxima_places[ maxima_places <= max_place_possible ]
-        print(maxima_values)
         
         
         if len( maxima_values ) > 0:

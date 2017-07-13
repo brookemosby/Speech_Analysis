@@ -34,8 +34,7 @@ def test_get_F_0():
                       
     #Testing values that came from Praat for each signal, using the standard values (with the exception
     #that time_step is set equal to .04 in Praat )                      
-    params = [ ( wave1, rate1, { 'accurate'  : False, 'min_pitch' : 550 },  0.0   ), 
-               ( wave1, rate1, { 'accurate'  : False, 'min_pitch' : 75 }, 228.892 ),
+    params = [ ( wave1, rate1, { 'accurate'  : False, 'min_pitch' : 75 }, 228.892 ),
                ( wave2, rate2, { 'accurate'  : False, 'min_pitch' : 75 }, 349.444 ),
                ( wave3, rate3, { 'accurate'  : False, 'min_pitch' : 75 }, 182.571 ),
                ( wave4, rate4, { 'accurate'  : False, 'min_pitch' : 75 }, 229.355 ),
@@ -46,7 +45,8 @@ def test_get_F_0():
                ( wave1, rate1, { 'time_step' : 0,     'min_pitch' : 75 }, 229.862 ),
                ( wave2, rate2, { 'time_step' : 0,     'min_pitch' : 75 }, 348.380 ),
                ( wave3, rate3, { 'time_step' : 0,     'min_pitch' : 75 }, 182.465 ),
-               ( wave4, rate4, { 'time_step' : 0,     'min_pitch' : 75 }, 229.198 ) ]
+               ( wave4, rate4, { 'time_step' : 0,     'min_pitch' : 75 }, 229.198 ),
+               ( wave1, rate1, { 'accurate'  : False, 'min_pitch' : 550 },  0.0   )]
     
     for param in params:
         wave, rate, kwargs, true_val = param
