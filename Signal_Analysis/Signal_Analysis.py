@@ -499,7 +499,7 @@ def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600, include_maxima = F
         time_start, time_stop = interval[ i ]
         print(time_start,time_stop)
         #finding the starting index for this voiced interval
-        t_start_index = int( time_start * rate )
+        t_start_index = np.argmin( abs( time_arr - time_start ) )
         T_0 = period[ i ]
         print(T_0)
         #assigning the start of our frame to the start of the voiced interval
@@ -508,7 +508,7 @@ def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600, include_maxima = F
         #assigning the end of our frame to the elapsed time of the period, with some cushion room
         frame_stop  = frame_start + 1.25 * T_0
         print(frame_start,frame_stop)
-        f_stop_index = int( frame_stop * rate + .5 )
+        f_stop_index = np.argmin( abs( time_arr - frame_stop ) )
         #finding our minima, maxima, or absolute maxima in this frame dependent on what parameters
         #were passed in
         frame = signal[ f_start_index : f_stop_index + 1 ]
