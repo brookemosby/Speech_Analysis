@@ -4,7 +4,7 @@
 
 # Speech_Analysis
 
-'Speech_Analysis' is a package that analyzes audio signals, and calculates the fundamental frequency (F_0), 
+`Speech_Analysis` is a package that analyzes audio signals, and calculates the fundamental frequency (F_0), 
 the harmonics-to-noise ratio (HNR), glottal pulses, and jitter of a speaker's voice. This package is
 comparable to Praat.
 
