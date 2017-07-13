@@ -527,8 +527,8 @@ def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600, include_maxima = F
         while frame_stop < time_stop:
             frame_start = t + 0.75 * T_0 
             frame_stop  = t + 1.25 * T_0 
-            f_start_index = int( frame_start * rate )
-            f_stop_index  = int( frame_stop  * rate + .5 )
+            f_start_index = np.argmin( abs( time_arr - frame_start ) )
+            f_stop_index  = np.argmin( abs( time_arr - frame_stop  ) )
             frame = signal[ f_start_index : f_stop_index + 1 ]
             print( frame, f_start_index, f_stop_index )
             if include_minima and not include_maxima:
