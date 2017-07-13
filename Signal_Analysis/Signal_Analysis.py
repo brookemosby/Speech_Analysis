@@ -87,7 +87,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         sig.get_F_0( wave, rate )
     """
     
-    Nyquist_Frequency = rate /  2
+    Nyquist_Frequency = rate /  2.0
     global_peak = max( abs( signal ) ) 
     upper_bound = .95 * Nyquist_Frequency
     initial_len = len( signal )
@@ -194,8 +194,8 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         i = pu.indexes( r_x )
         maxima_values, maxima_places = r_x[ i ], time_array[ i ]
         print(maxima_values)
-        max_place_possible = 1. / min_pitch
-        min_place_possible = 1. / max_pitch
+        max_place_possible = 1.0 / min_pitch
+        min_place_possible = 1.0 / max_pitch
 
         maxima_values = maxima_values[ maxima_places >= min_place_possible ]
         maxima_places = maxima_places[ maxima_places >= min_place_possible ]
