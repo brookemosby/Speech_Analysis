@@ -111,7 +111,7 @@ def test_get_Pulses():
                 sum_total += p2
                 num_periods += 1
         est_avg_period = sum_total / num_periods 
-        assert abs( est_avg_period - avg_period ) < .0002
+        assert abs( est_avg_period - avg_period ) < .00025
         
 def test_get_Jitter():
     #Testing values that came from Praat for each signal, by going from sound-> PointProcess (peaks)
