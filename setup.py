@@ -1,6 +1,6 @@
 from setuptools import setup
 setup( name = 'Signal_Analysis',
-      version=' 0.1.3 ',
+      version=' 0.1.4 ',
       description = 'Determines different characteristics of signals.',
       long_description = '',
       author = 'Brooke V Mosby',
