@@ -232,7 +232,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
     """
     best_total_cost = np.inf
     best_total_path = []
-    
+    print(best_cands)
     #for each initial candidate find the path of least cost, then of those paths, choose the one 
     #with the least cost.
     for a in range( len( best_cands[ 0 ] ) ):
