@@ -202,7 +202,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         
         maxima_values = maxima_values[ maxima_places <= max_place_possible ]
         maxima_places = maxima_places[ maxima_places <= max_place_possible ]
-        
+        print(maxima_values)
         if len( maxima_values ) > 0:
             #finding the max_num_cands-1 maximizers, and maximums, then calculating their
             #strengths (eq. 23 & 24) and accounting for silent candidate
@@ -210,7 +210,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
                     -1 * ( max_num_cands - 1 ) : ] ] )
             maxima_values = np.array( [ maxima_values[ i ] for i in np.argsort( maxima_values )[
                     -1 * ( max_num_cands - 1 ) : ] ] )
-            print(maxima_values)
+            print('here')
             strengths_1 = [ max_val - octave_cost * np.log2( min_pitch * max_place ) for 
                     max_val, max_place in zip( maxima_values, maxima_places ) ]
             strengths_1.append( voicing_threshold + max( 0, 2 - ( ( local_peak / global_peak ) / 
@@ -232,7 +232,6 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
     """
     best_total_cost = np.inf
     best_total_path = []
-    print(best_cands)
     #for each initial candidate find the path of least cost, then of those paths, choose the one 
     #with the least cost.
     for a in range( len( best_cands[ 0 ] ) ):
