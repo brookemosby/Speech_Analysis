@@ -192,17 +192,14 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         time_array = np.linspace( 0, window_len, len( r_x ) )
         i = pu.indexes( r_x )
         maxima_values, maxima_places = r_x[ i ], time_array[ i ]
-        print(maxima_places)
         max_place_possible = 1.0 / min_pitch
         min_place_possible = 1.0 / max_pitch
-        print(min_place_possible, max_place_possible)
         
         maxima_values = maxima_values[ maxima_places >= min_place_possible ]
         maxima_places = maxima_places[ maxima_places >= min_place_possible ]
-        print(maxima_values)
+        
         maxima_values = maxima_values[ maxima_places <= max_place_possible ]
         maxima_places = maxima_places[ maxima_places <= max_place_possible ]
-        print(maxima_values)
         
         if len( maxima_values ) > 0:
             #finding the max_num_cands-1 maximizers, and maximums, then calculating their
@@ -230,6 +227,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
     Detailed description can be found at step 4 of algorithm described in:
         http://www.fon.hum.uva.nl/david/ba_shs/2010/Boersma_Proceedings_1993.pdf
     """
+    print(best_cands)
     best_total_cost = np.inf
     best_total_path = []
     #for each initial candidate find the path of least cost, then of those paths, choose the one 
@@ -272,7 +270,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
             best_total_path = total_path
 
     f_0 = np.array( best_total_path )    
-    
+    print(f_0)
     if pulse:
         removed = 0
         for i in range( len( f_0 ) ):
