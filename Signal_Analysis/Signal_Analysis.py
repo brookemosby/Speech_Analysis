@@ -192,8 +192,8 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         #of the signal (r_x)
         time_array = np.linspace( 0, window_len, len( r_x ) )
         i = pu.indexes( r_x )
-        print(i)
         maxima_values, maxima_places = r_x[ i ], time_array[ i ]
+        print(maxima_values)
         max_place_possible = 1. / min_pitch
         min_place_possible = 1. / max_pitch
 
