@@ -30,12 +30,12 @@ def test_get_F_0():
             sig.get_F_0( wave1, rate1, **kwargs )
         assert excinfo.typename == 'ValueError'
         assert excinfo.value.args[ 0 ] == message
-    #This test the case that we have no valid candidates
-    assert sig.get_F_0( wave1, rate1, min_pitch = 550, max_num_cands = 3 ) == 0
+
                       
     #Testing values that came from Praat for each signal, using the standard values (with the exception
     #that time_step is set equal to .04 in Praat )                      
-    params = [ ( wave1, rate1, { 'accurate'  : False, 'min_pitch' : 75 }, 228.892 ),
+    params = [ ( wave1, rate1, { 'accurate'  : False, 'min_pitch' : 550 },  0.0   ), 
+               ( wave1, rate1, { 'accurate'  : False, 'min_pitch' : 75 }, 228.892 ),
                ( wave2, rate2, { 'accurate'  : False, 'min_pitch' : 75 }, 349.444 ),
                ( wave3, rate3, { 'accurate'  : False, 'min_pitch' : 75 }, 182.571 ),
                ( wave4, rate4, { 'accurate'  : False, 'min_pitch' : 75 }, 229.355 ),
@@ -53,7 +53,6 @@ def test_get_F_0():
         print(wave,rate)
         est_val = sig.get_F_0( wave, rate, **kwargs )
         assert abs( est_val - true_val ) < 5, 'Estimated frequency not within allotted range.'
-
 def test_get_HNR():
     #Here we test all the exceptions using the generic sine wave created above 
     with pytest.raises( Exception ) as excinfo:
