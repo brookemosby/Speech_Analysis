@@ -50,11 +50,10 @@ def test_get_F_0():
     
     for param in params:
         wave, rate, kwargs, true_val = param
-        print(wave,rate)
         est_val = sig.get_F_0( wave, rate, **kwargs )
         assert abs( est_val - true_val ) < 5, 'Estimated frequency not within allotted range.'
 def test_get_HNR():
-    #Here we test all the exceptions using the generic sine wave created above 
+    #Here we test all the exceptions
     with pytest.raises( Exception ) as excinfo:
         sig.get_HNR( wave1, rate1, min_pitch = 0 )
     assert excinfo.typename == 'ValueError'

@@ -495,6 +495,7 @@ def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600, include_maxima = F
     time_arr = np.linspace( 0, total_time, len( signal ) )
     #Then for each voiced interval calculate all pulses
     for i in range( len( period ) ):
+        print(i)
         time_start, time_stop = interval[ i ]
         #finding the starting index for this voiced interval
         t_start_index = np.argmin( abs( time_arr - time_start ) )
