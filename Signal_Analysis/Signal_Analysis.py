@@ -147,7 +147,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
     for index in range( len( segmented_signal ) ):
         
         segment = segmented_signal[ index ]
-        window_len = len( segment ) / rate
+        window_len = len( segment ) / float( rate )
         local_peak = max( abs( segment ) )
         if pulse:
             time_vals.append( ( index * time_step, index * time_step + window_len ) )
