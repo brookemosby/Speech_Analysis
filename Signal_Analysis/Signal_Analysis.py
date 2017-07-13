@@ -201,7 +201,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         
         maxima_values = maxima_values[ maxima_places <= max_place_possible ]
         maxima_places = maxima_places[ maxima_places <= max_place_possible ]
-        
+        print(maxima_values)
         if len( maxima_values ) > 0:
             #finding the max_num_cands-1 maximizers, and maximums, then calculating their
             #strengths (eq. 23 & 24) and accounting for silent candidate
@@ -280,7 +280,6 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
                 removed += 1
                 
     f_0 = f_0[ f_0 < np.inf ]
-    print(f_0)
     if pulse:
         return f_0, time_vals
     
