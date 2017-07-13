@@ -227,7 +227,6 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
     Detailed description can be found at step 4 of algorithm described in:
         http://www.fon.hum.uva.nl/david/ba_shs/2010/Boersma_Proceedings_1993.pdf
     """
-    print(best_cands)
     best_total_cost = np.inf
     best_total_path = []
     #for each initial candidate find the path of least cost, then of those paths, choose the one 
@@ -510,7 +509,7 @@ def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600, include_maxima = F
         #finding our minima, maxima, or absolute maxima in this frame dependent on what parameters
         #were passed in
         frame = signal[ f_start_index : f_stop_index + 1 ]
-        print( frame )
+        print( frame, f_start_index, f_stop_index )
         if include_minima and not include_maxima:
             t_index = np.argmin( frame ) + f_start_index
         elif include_maxima and not include_minima:
