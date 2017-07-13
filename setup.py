@@ -1,8 +1,9 @@
 from setuptools import setup
+
 setup( name = 'Signal_Analysis',
-      version=' 0.1.5 ',
+      version=' 0.1.6 ',
       description = 'Determines different characteristics of signals.',
-      long_description = '',
+      long_description = "",
       author = 'Brooke V Mosby',
       author_email = 'brooke.mosby.byu@gmail.com',
       url='https://github.com/brookemosby/Speech_Analysis',

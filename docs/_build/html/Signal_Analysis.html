@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Signal_Analysis package &#8212; Signal_Analysis 0.1.1 documentation</title>
+    <title>Signal_Analysis package &#8212; Signal_Analysis 0.1.5 documentation</title>
     
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.1.1',
+        VERSION:     '0.1.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -26,6 +26,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Signal_Analysis" href="index.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -49,11 +50,11 @@
 <div class="section" id="signal-analysis-signal-analysis-module">
 <h2>Signal_Analysis.Signal_Analysis module<a class="headerlink" href="#signal-analysis-signal-analysis-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="signal-analysis-sig-tools-module">
-<h2>Signal_Analysis.sig_tools module<a class="headerlink" href="#signal-analysis-sig-tools-module" title="Permalink to this headline">¶</a></h2>
-</div>
 <div class="section" id="module-Signal_Analysis">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-Signal_Analysis" title="Permalink to this headline">¶</a></h2>
+<p>module(name[, doc])</p>
+<p>Create a module object.
+The name must be a string; the optional doc argument can have any type.</p>
 <dl class="function">
 <dt id="Signal_Analysis.get_F_0">
 <code class="descclassname">Signal_Analysis.</code><code class="descname">get_F_0</code><span class="sig-paren">(</span><em>signal</em>, <em>rate</em>, <em>time_step=0.04</em>, <em>min_pitch=75</em>, <em>max_pitch=600</em>, <em>max_num_cands=15</em>, <em>silence_threshold=0.03</em>, <em>voicing_threshold=0.45</em>, <em>octave_cost=0.01</em>, <em>octave_jump_cost=0.35</em>, <em>voiced_unvoiced_cost=0.14</em>, <em>accurate=False</em>, <em>pulse=False</em><span class="sig-paren">)</span><a class="headerlink" href="#Signal_Analysis.get_F_0" title="Permalink to this definition">¶</a></dt>
@@ -105,12 +106,13 @@ the frame, and the ending time of the frame. The indicies in each list correspon
 <dt>Returns:</dt>
 <dd>float: The median F0 of the signal.</dd>
 <dt>Raises:</dt>
-<dd>ValueError: The maximum pitch cannot be greater than the Nyquist Frequency.
-ValueError: The minimum pitch cannot be equal or less than zero.
-ValueError: The minimum number of candidates is 2.
-ValueError: octave_cost must be between 0 and 1.
-ValueError: silence_threshold must be between 0 and 1.
-ValueError: voicing_threshold must be between 0 and 1.</dd>
+<dd><p class="first">ValueError: The maximum pitch cannot be greater than the Nyquist Frequency.</p>
+<p>ValueError: The minimum pitch cannot be equal or less than zero.</p>
+<p>ValueError: The minimum number of candidates is 2.</p>
+<p>ValueError: octave_cost must be between 0 and 1.</p>
+<p>ValueError: silence_threshold must be between 0 and 1.</p>
+<p class="last">ValueError: voicing_threshold must be between 0 and 1.</p>
+</dd>
 </dl>
 <p>Example:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">scipy.io</span> <span class="k">import</span> <span class="n">wavfile</span> <span class="k">as</span> <span class="n">wav</span>
@@ -148,8 +150,9 @@ signal.</p>
 <dt>Returns:</dt>
 <dd>float: The mean HNR of the signal.</dd>
 <dt>Raises:</dt>
-<dd>ValueError: The minimum pitch cannot be equal or less than zero.
-ValueError: silence_threshold must be between 0 and 1.</dd>
+<dd><p class="first">ValueError: The minimum pitch cannot be equal or less than zero.</p>
+<p class="last">ValueError: silence_threshold must be between 0 and 1.</p>
+</dd>
 </dl>
 <p>Example:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">scipy.io</span> <span class="k">import</span> <span class="n">wavfile</span> <span class="k">as</span> <span class="n">wav</span>
@@ -248,7 +251,6 @@ be greater than Nyquist Frequency</p>
 <li><a class="reference internal" href="#">Signal_Analysis package</a><ul>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
 <li><a class="reference internal" href="#signal-analysis-signal-analysis-module">Signal_Analysis.Signal_Analysis module</a></li>
-<li><a class="reference internal" href="#signal-analysis-sig-tools-module">Signal_Analysis.sig_tools module</a></li>
 <li><a class="reference internal" href="#module-Signal_Analysis">Module contents</a></li>
 </ul>
 </li>
@@ -257,6 +259,7 @@ be greater than Nyquist Frequency</p>
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Signal_Analysis</a></li>
   </ul></li>
 </ul>
 </div>

@@ -12,14 +12,6 @@ Signal_Analysis.Signal_Analysis module
     :undoc-members:
     :show-inheritance:
 
-Signal_Analysis.sig_tools module
---------------------------------
-
-.. automodule:: Signal_Analysis.sig_tools
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 
 Module contents
 ---------------
