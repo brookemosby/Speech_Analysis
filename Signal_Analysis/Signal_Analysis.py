@@ -86,7 +86,6 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         rate, wave = wav.read( 'example_audio_file.wav' )
         sig.get_F_0( wave, rate )
     """
-    print(min_pitch)
     Nyquist_Frequency = rate /  2.0
     global_peak = max( abs( signal ) ) 
     upper_bound = .95 * Nyquist_Frequency
@@ -196,7 +195,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         print(maxima_values)
         max_place_possible = 1.0 / min_pitch
         min_place_possible = 1.0 / max_pitch
-        print(min_pitch, max_pitch)
+        print(min_place_possible, max_place_possible)
         
         maxima_values = maxima_values[ maxima_places >= min_place_possible ]
         maxima_places = maxima_places[ maxima_places >= min_place_possible ]
