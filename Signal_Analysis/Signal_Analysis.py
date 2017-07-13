@@ -193,7 +193,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         time_array = np.linspace( 0, window_len, len( r_x ) )
         i = pu.indexes( r_x )
         maxima_values, maxima_places = r_x[ i ], time_array[ i ]
-        print(maxima_values)
+        
         max_place_possible = 1.0 / min_pitch
         min_place_possible = 1.0 / max_pitch
 
@@ -202,6 +202,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         
         maxima_values = maxima_values[ maxima_places <= max_place_possible ]
         maxima_places = maxima_places[ maxima_places <= max_place_possible ]
+        
         if len( maxima_values ) > 0:
             #finding the max_num_cands-1 maximizers, and maximums, then calculating their
             #strengths (eq. 23 & 24) and accounting for silent candidate
@@ -209,6 +210,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
                     -1 * ( max_num_cands - 1 ) : ] ] )
             maxima_values = np.array( [ maxima_values[ i ] for i in np.argsort( maxima_values )[
                     -1 * ( max_num_cands - 1 ) : ] ] )
+            print(maxima_values)
             strengths_1 = [ max_val - octave_cost * np.log2( min_pitch * max_place ) for 
                     max_val, max_place in zip( maxima_values, maxima_places ) ]
             strengths_1.append( voicing_threshold + max( 0, 2 - ( ( local_peak / global_peak ) / 
