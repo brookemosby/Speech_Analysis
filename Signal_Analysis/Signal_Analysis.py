@@ -491,7 +491,7 @@ def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600, include_maxima = F
     period, interval = get_F_0( signal, rate, time_step = 3.0 / min_pitch,
                                min_pitch = min_pitch, max_pitch = max_pitch, pulse = True )
     points=[]
-    total_time = len( signal ) / rate
+    total_time = len( signal ) / float( rate )
     time_arr = np.linspace( 0, total_time, len( signal ) )
     #Then for each voiced interval calculate all pulses
     for i in range( len( period ) ):
