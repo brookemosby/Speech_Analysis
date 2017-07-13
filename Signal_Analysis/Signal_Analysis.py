@@ -497,9 +497,11 @@ def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600, include_maxima = F
     #Then for each voiced interval calculate all pulses
     for i in range( len( period ) ):
         time_start, time_stop = interval[ i ]
+        print(time_start,time_stop)
         #finding the starting index for this voiced interval
         t_start_index = int( time_start * rate )
         T_0 = period[ i ]
+        print(T_0)
         #assigning the start of our frame to the start of the voiced interval
         f_start_index = t_start_index
         frame_start = time_arr[ f_start_index ]
