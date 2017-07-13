@@ -280,6 +280,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
                 removed += 1
                 
     f_0 = f_0[ f_0 < np.inf ]
+    print(f_0)
     if pulse:
         return f_0, time_vals
     
