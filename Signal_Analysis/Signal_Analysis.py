@@ -361,7 +361,7 @@ def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .
     
     global_peak = max( abs( signal ) ) 
     
-    window_len = periods_per_window / min_pitch
+    window_len = periods_per_window / float( min_pitch )
     
 
     #Segmenting signal
@@ -384,7 +384,7 @@ def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .
     for index in range( len( segmented_signal ) ):
         
         segment = segmented_signal[ index ]
-        window_len = len( segment ) / rate
+        window_len = len( segment ) / float( rate )
         local_peak = max( abs( segment ) )
         #calculating autocorrelation, based off steps 3.2-3.10
         segment = segment - segment.mean()
