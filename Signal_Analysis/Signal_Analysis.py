@@ -1,6 +1,6 @@
 import numpy as np
 import peakutils as pu
-import Signal_Analysis.sig_tools as st
+
 
 def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max_num_cands = 15,
             silence_threshold = .03, voicing_threshold = .45, octave_cost = .01, octave_jump_cost = .35,
@@ -123,8 +123,21 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         window_len = 3.0 / min_pitch
             
     octave_jump_cost     *= .01 / time_step
-    voiced_unvoiced_cost *= .01 / time_step            
-    segmented_signal = st.segment_signal( window_len, time_step, signal, rate )
+    voiced_unvoiced_cost *= .01 / time_step 
+
+    #Segmenting signal
+    frame_len = int( window_len * rate )
+    time_len = int( time_step * rate )
+    
+    #there has to be at least one frame
+    num_frames = max( 1, int( len( sig ) / time_len + .5 ) ) 
+    
+    segmented_signal = [ sig[ int( i * time_len ) : int( i  * time_len ) + frame_len ]  
+                                                 for i in range( num_frames + 1 ) ]
+    
+    #This eliminates an empty list that could be created at the end
+    if len( segmented_signal[ - 1 ] ) == 0:
+        segmented_signal = segmented_signal[ : -1 ]
      
     
     #initializing list of candidates for F_0, and their strengths
@@ -141,15 +154,38 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
             time_vals.append( ( index * time_step, index * time_step + window_len ) )
 
         if accurate:
-            window = st.gaussian( len( segment ), window_len )
+            t = np.linspace( 0, window_len, len( segment ) )
+            window = ( np.e ** ( -12 * ( t / window_len - .5 ) ** 2 ) - np.e ** -12 ) / ( 1 - np.e ** -12 )
         else:
             window = np.hanning( len( segment ) )
             
         #calculating autocorrelation, based off steps 3.2-3.10
         segment = segment - segment.mean()
         segment *= window
-        r_a = st.estimated_autocorrelation( segment )
-        r_w = st.estimated_autocorrelation( window )
+        """
+        Calculates an estimation of the autocorrelation,based off the given algorithm (steps 3.5-3.9):
+            http://www.fon.hum.uva.nl/david/ba_shs/2010/Boersma_Proceedings_1993.pdf
+        described below 
+        1. append half the window length of zeros
+        2. append zeros until the segment length is a power of 2, calculated with log.
+        3. take the FFT
+        4. square samples in the signal
+        5. then again take the FFT
+        """
+        N = len( segment )
+        x = np.hstack( ( segment, np.zeros( int( N / 2 ) ) ) )
+        x = np.hstack( ( x, np.zeros( 2 ** ( int( np.log2( N ) + 1 ) ) - N ) ) )            
+        x_fft = np.fft.fft( x )
+        r_a = np.real( np.fft.fft( x_fft * np.conjugate( x_fft ) ) )
+        r_a = r_a[ :N ]
+        
+        N = len( window )
+        x = np.hstack( ( window, np.zeros( int( N / 2 ) ) ) )
+        x = np.hstack( ( x, np.zeros( 2 ** ( int( np.log2( N ) + 1 ) ) - N ) ) )            
+        x_fft = np.fft.fft( x )
+        r_w = np.real( np.fft.fft( x_fft * np.conjugate( x_fft ) ) )
+        r_w = r_w[ :N ]
+        
         r_x = r_a / r_w
         r_x /= r_x[ 0 ]
         #creating an array of the points in time corresponding to our sampled autocorrelation
@@ -187,9 +223,54 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
             best_cands.append( [ np.inf ] )
             strengths.append( [ voicing_threshold + max( 0, 2 - ( ( local_peak / global_peak ) /
                     ( silence_threshold / ( 1 + voicing_threshold ) ) ) ) ] )
+    """
+    Calculates smallest costing path through list of candidates, and returns path.
+    Detailed description can be found at step 4 of algorithm described in:
+        http://www.fon.hum.uva.nl/david/ba_shs/2010/Boersma_Proceedings_1993.pdf
+    """
+    best_total_cost = np.inf
+    best_total_path = []
+    
+    #for each initial candidate find the path of least cost, then of those paths, choose the one 
+    #with the least cost.
+    for a in range( len( best_cands[ 0 ] ) ):
+        start_val = best_cands[ 0 ][ a ]
+        total_path = [ start_val ]
+        #the starting cost is minus the strength of that candidate
+        total_cost = -1 * strengths[ 0 ][ a ]
+        level = 1
+        
+        while level < len( best_cands ) :
+            
+            prev_val = total_path[ -1 ]
+            best_cost = np.inf
+            best_val  = np.inf
+            for j in range( len( best_cands[ level ] ) ):
+                cur_val = best_cands[ level ][ j ] 
                 
-    #using viterbi algorithm to find a path through best set of candidates    
-    f_0 = st.viterbi( best_cands, strengths, voiced_unvoiced_cost, octave_jump_cost )
+                if prev_val == np.inf and cur_val == np.inf:
+                    cost = 0
+                elif prev_val == np.inf or cur_val == np.inf:
+                    cost = voiced_unvoiced_cost 
+                else:
+                    cost = octave_jump_cost * abs( np.log2( prev_val / cur_val ) ) 
+                
+                #The cost for any given candidate is given by the transition cost, minus the strength
+                #of the given candidate
+                cost -= ( strengths[ level ][ j ] )
+                
+                if cost <= best_cost:
+                    best_cost = cost
+                    best_val = cur_val
+                    
+            total_path.append( best_val )
+            total_cost += best_cost
+            level += 1
+        if total_cost < best_total_cost:
+            best_total_cost = total_cost
+            best_total_path = total_path
+
+    f_0 = np.array( best_total_path )    
     
     if pulse:
         removed = 0
@@ -280,7 +361,21 @@ def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .
     global_peak = max( abs( signal ) ) 
     
     window_len = periods_per_window / min_pitch
-    segmented_signal = st.segment_signal( window_len, time_step, sig, rate )
+    
+
+    #Segmenting signal
+    frame_len = int( window_len * rate )
+    time_len = int( time_step * rate )
+    
+    #there has to be at least one frame
+    num_frames = max( 1, int( len( sig ) / time_len + .5 ) ) 
+    
+    segmented_signal = [ sig[ int( i * time_len ) : int( i  * time_len ) + frame_len ]  
+                                                 for i in range( num_frames + 1 ) ]
+    
+    #This eliminates an empty list that could be created at the end
+    if len( segmented_signal[ - 1 ] ) == 0:
+        segmented_signal = segmented_signal[ : -1 ]
     
     #initializing list of candidates for HNR
     best_cands = []
@@ -294,8 +389,29 @@ def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .
         segment = segment - segment.mean()
         window = np.hanning( len( segment ) )
         segment *= window
-        r_a = st.estimated_autocorrelation( segment )
-        r_w = st.estimated_autocorrelation( window )
+        """
+        Calculates an estimation of the autocorrelation,based off the given algorithm (steps 3.5-3.9):
+            http://www.fon.hum.uva.nl/david/ba_shs/2010/Boersma_Proceedings_1993.pdf
+        described below 
+        1. append half the window length of zeros
+        2. append zeros until the segment length is a power of 2, calculated with log.
+        3. take the FFT
+        4. square samples in the signal
+        5. then again take the FFT
+        """
+        N = len( segment )
+        x = np.hstack( ( segment, np.zeros( int( N / 2 ) ) ) )
+        x = np.hstack( ( x, np.zeros( 2 ** ( int( np.log2( N ) + 1 ) ) - N ) ) )            
+        x_fft = np.fft.fft( x )
+        r_a = np.real( np.fft.fft( x_fft * np.conjugate( x_fft ) ) )
+        r_a = r_a[ :N ]
+        
+        N = len( window )
+        x = np.hstack( ( window, np.zeros( int( N / 2 ) ) ) )
+        x = np.hstack( ( x, np.zeros( 2 ** ( int( np.log2( N ) + 1 ) ) - N ) ) )            
+        x_fft = np.fft.fft( x )
+        r_w = np.real( np.fft.fft( x_fft * np.conjugate( x_fft ) ) )
+        r_w = r_w[ :N ]
         r_x = r_a / r_w
         r_x /= r_x[ 0 ]
         
