@@ -1,7 +1,7 @@
 MANIFEST.in
 setup.py
 Signal_Analysis/Signal_Analysis.py
-Signal_Analysis/sig_tools.py
+Signal_Analysis/__init__.py
 Signal_Analysis.egg-info/PKG-INFO
 Signal_Analysis.egg-info/SOURCES.txt
 Signal_Analysis.egg-info/dependency_links.txt

@@ -1,6 +1,6 @@
 from setuptools import setup
 setup( name = 'Signal_Analysis',
-      version=' 0.1.4 ',
+      version=' 0.1.5 ',
       description = 'Determines different characteristics of signals.',
       long_description = '',
       author = 'Brooke V Mosby',
@@ -15,7 +15,7 @@ setup( name = 'Signal_Analysis',
       ],
       packages = [ 'Signal_Analysis' ] ,
       include_package_data = True,
-      scripts = [ 'Signal_Analysis/Signal_Analysis.py', 'Signal_Analysis/sig_tools.py' ],
+      scripts = [ 'Signal_Analysis/Signal_Analysis.py' ],
               
       classifiers=[
           'Development Status :: 3 - Alpha',
