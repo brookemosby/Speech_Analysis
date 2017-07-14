@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup( name = 'Signal_Analysis',
-      version=' 0.1.6 ',
+      version=' 0.1.7 ',
       description = 'Determines different characteristics of signals.',
       long_description = "",
       author = 'Brooke V Mosby',
