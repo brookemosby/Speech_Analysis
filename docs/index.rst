@@ -5,7 +5,7 @@
 
 Signal_Analysis
 ===========================================
-|Build Status| |PyPI version|
+|Build Status| |Coverage Status| |PyPI version|
 
 ``Speech_Analysis`` is a package that analyzes audio signals, and
 calculates the fundamental frequency (F\_0), the harmonics-to-noise
@@ -43,5 +43,9 @@ Indices and tables
 
 .. |Build Status| image:: https://travis-ci.org/brookemosby/Speech_Analysis.svg?branch=master
 	:target: https://travis-ci.org/brookemosby/Speech_Analysis
+.. |Coverage Status| image:: https://coveralls.io/repos/github/brookemosby/Speech_Analysis/badge.svg?branch=master
+	:target: https://coveralls.io/github/brookemosby/Speech_Analysis?branch=master
 .. |PyPI version| image:: https://badge.fury.io/py/Signal_Analysis.svg
 	:target: https://badge.fury.io/py/Signal_Analysis
+
+	

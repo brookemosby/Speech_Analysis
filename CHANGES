@@ -2,3 +2,5 @@ version 0.1.4
 -updated to work with python 2.7
 version 0.1.5 & 0.1.6 
 -updated API documentation
+version 0.1.7
+-added badge for coveralls

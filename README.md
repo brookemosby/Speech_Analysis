@@ -1,6 +1,8 @@
 
 [![Build Status](https://travis-ci.org/brookemosby/Speech_Analysis.svg?branch=master)](https://travis-ci.org/brookemosby/Speech_Analysis) 
+[![Coverage Status](https://coveralls.io/repos/github/brookemosby/Speech_Analysis/badge.svg?branch=master)](https://coveralls.io/github/brookemosby/Speech_Analysis?branch=master)
 [![PyPI version](https://badge.fury.io/py/Signal_Analysis.svg)](https://badge.fury.io/py/Signal_Analysis)
+
 
 # Speech_Analysis
 
