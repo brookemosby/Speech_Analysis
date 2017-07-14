@@ -587,9 +587,7 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
         sig.get_Jitter( wave, rate )
     
     """
-    period, interval = get_F_0( signal, rate, pulse = True )  
-    min_pitch = int( min( 1.0 / period ) )
-    pulses = get_Pulses( signal, rate, min_pitch = min_pitch )
+    pulses = get_Pulses( signal, rate )
     periods = np.diff( pulses )
     
     min_period_factor = 1.0 / max_period_factor
