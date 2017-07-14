@@ -1,7 +1,6 @@
 import numpy as np
 import peakutils as pu
 
-
 def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max_num_cands = 15,
             silence_threshold = .03, voicing_threshold = .45, octave_cost = .01, octave_jump_cost = .35,
             voiced_unvoiced_cost = .14, accurate = False, pulse = False ):
@@ -65,7 +64,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         
     Returns:
         float: The median F0 of the signal.
-        
+        #TODO:timestep cant be greater than length of window/ or negative
     Raises:
         ValueError: The maximum pitch cannot be greater than the Nyquist Frequency.
         
@@ -120,7 +119,8 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         window_len = 6.0 / min_pitch
     else:
         window_len = 3.0 / min_pitch
-            
+    
+    #correcting for time_step       
     octave_jump_cost     *= .01 / time_step
     voiced_unvoiced_cost *= .01 / time_step 
 
@@ -586,8 +586,10 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
         rate, wave = wav.read( 'example_audio_file.wav' )
         sig.get_Jitter( wave, rate )
     
-    """    
-    pulses = get_Pulses( signal, rate )
+    """
+    period, interval = get_F_0( signal, rate, pulse = True )  
+    min_pitch = int( min( 1.0 / period ) )
+    pulses = get_Pulses( signal, rate, time_step = 3.0 / min_pitch, min_pitch = min_pitch )
     periods = np.diff( pulses )
     
     min_period_factor = 1.0 / max_period_factor
