@@ -19,4 +19,4 @@ pip install Signal_Analysis
 ## API Documentation
 
 Full API documentation is hosted at [github
-pages](https://github.com/brookemosby/Speech_Analysis/).
+pages](https://brookemosby.github.io/Signal_Analysis/).

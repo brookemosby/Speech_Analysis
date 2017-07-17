@@ -6,3 +6,5 @@ version 0.1.7
 -added badge for coveralls
 version 0.1.8
 -added README.rst to PyPI
+version 0.1.9
+-update link to github pages
