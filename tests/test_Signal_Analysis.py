@@ -118,7 +118,6 @@ def test_get_Jitter():
                ( wave2, rate2, np.array( [ 0.049284, 0.000148, 0.026462, 0.025010, 0.079386 ] ) ),
                ( wave3, rate3, np.array( [ 0.027097, 0.000141, 0.014425, 0.013832, 0.043274 ] ) ),
                ( wave4, rate4, np.array( [ 0.034202, 0.000143, 0.019735, 0.018335, 0.059206 ] ) ) ] 
-    #TODO: jitter dictionary doesnt return values in exact order
     for param in params:
         wave, rate, true_val = param
         est_val = sig.get_Jitter( wave, rate )
