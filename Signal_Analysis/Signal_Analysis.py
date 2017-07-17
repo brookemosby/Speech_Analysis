@@ -85,7 +85,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         sig.get_F_0( wave, rate )
     """
     Nyquist_Frequency = rate /  2.0
-    global_peak = max( abs( signal ) ) 
+    
     upper_bound = .95 * Nyquist_Frequency
     initial_len = len( signal )
     zeros_pad = 2 ** ( int( np.log2( len( signal ) ) ) + 1 ) - len( signal )
@@ -95,7 +95,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         fft_signal[ i ] = 0
     sig = np.fft.ifft( fft_signal )
     sig = sig[ :initial_len ]
-    
+    global_peak = max( abs( signal ) ) 
     #checking to make sure values are valid
     if Nyquist_Frequency < max_pitch:
         raise ValueError( "The maximum pitch cannot be greater than the Nyquist Frequency." )
@@ -147,7 +147,7 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         
         segment = segmented_signal[ index ]
         window_len = len( segment ) / float( rate )
-        local_peak = max( abs( segment ) )
+        
         if pulse:
             time_vals.append( ( index * time_step, index * time_step + window_len ) )
 
@@ -156,24 +156,28 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
             window = ( np.e ** ( -12 * ( t / window_len - .5 ) ** 2 ) - np.e ** -12 ) / ( 1 - np.e ** -12 )
         else:
             window = np.hanning( len( segment ) )
+        longest_period_index = int( rate / min_pitch )
+        half_period_index = int( longest_period_index / 2.0 )
+        if index == 0:
+            period_cushion = np.hstack( ( segment, segmented_signal[ index + 1 ][ : longest_period_index ] ) )
+            half_period_cushion = np.hstack( ( segment, segmented_signal[ index + 1 ][ : half_period_index ] ) )
+        elif index == len( segmented_signal ) - 1:
+            period_cushion = np.hstack( ( segmented_signal[ index - 1 ][ -longest_period_index : ], segment ) )
+            half_period_cushion = np.hstack( ( segmented_signal[ index - 1 ][ -half_period_index : ], segment ) )
+        else:
+            period_cushion = np.hstack( ( segmented_signal[ index - 1 ][ -longest_period_index : ], segment, segmented_signal[ index + 1 ][ : longest_period_index ] ) )
+            half_period_cushion = np.hstack( ( segmented_signal[ index - 1 ][ -half_period_index : ], segment, segmented_signal[ index + 1 ][ : half_period_index ] ) )
             
+        local_peak = max( abs( half_period_cushion ) )
+        
         #calculating autocorrelation, based off steps 3.2-3.10
-        segment = segment - segment.mean()
+        segment = segment - period_cushion.mean()
         segment *= window
-        """
-        Calculates an estimation of the autocorrelation,based off the given algorithm (steps 3.5-3.9):
-            http://www.fon.hum.uva.nl/david/ba_shs/2010/Boersma_Proceedings_1993.pdf
-        described below 
-        1. append half the window length of zeros
-        2. append zeros until the segment length is a power of 2, calculated with log.
-        3. take the FFT
-        4. square samples in the signal
-        5. then again take the FFT
-        """
         N = len( segment )
         x = np.hstack( ( segment, np.zeros( int( N / 2 ) ) ) )
         x = np.hstack( ( x, np.zeros( 2 ** ( int( np.log2( N ) + 1 ) ) - N ) ) )            
         x_fft = np.fft.fft( x )
+        print(x[0])
         r_a = np.real( np.fft.fft( x_fft * np.conjugate( x_fft ) ) )
         r_a = r_a[ :N ]
         
