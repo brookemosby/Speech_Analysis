@@ -64,7 +64,6 @@ def get_F_0( signal, rate, time_step = .04, min_pitch = 75, max_pitch = 600, max
         
     Returns:
         float: The median F0 of the signal.
-        #TODO:timestep cant be greater than length of window/ or negative
     Raises:
         ValueError: The maximum pitch cannot be greater than the Nyquist Frequency.
         
@@ -696,30 +695,3 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
             
     return {  'local' : relative, 'local, absolute' : absolute, 'rap' : rap, 'ppq5' : ppq5, 'ddp' : 3 * rap }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#TODO: get code put up github/travis?/coveralls...   
-#TODO: clone repo, put on github-> goes in super ai->afx->features (in my fork, ask when ready to merge fork)
-#TODO: need to get a key for me to put it on privately(only for coveralls)
-#which I can put up once I have finished all the features
-#TODO: update github pages so that I can post other things on there besides just titanic
