@@ -4,3 +4,5 @@ version 0.1.5 & 0.1.6
 -updated API documentation
 version 0.1.7
 -added badge for coveralls
+version 0.1.8
+-added README.rst to PyPI

@@ -1,9 +1,17 @@
 from setuptools import setup
+from os import path
 
+try:
+    from pypandoc import convert
+    read_md = lambda f: convert(f, 'rst')
+except ImportError:
+    print("warning: pypandoc module not found, could not convert Markdown to RST")
+    read_md = lambda f: open(f, 'r').read()
+    
 setup( name = 'Signal_Analysis',
-      version=' 0.1.7 ',
+      version=' 0.1.8 ',
       description = 'Determines different characteristics of signals.',
-      long_description = "",
+      long_description = "" if not path.isfile("README.md") else read_md('README.md'),
       author = 'Brooke V Mosby',
       author_email = 'brooke.mosby.byu@gmail.com',
       url='https://github.com/brookemosby/Speech_Analysis',
