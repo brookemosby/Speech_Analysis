@@ -30,7 +30,8 @@ def test_get_F_0():
         assert excinfo.typename == 'ValueError'
         assert excinfo.value.args[ 0 ] == message
 
-                      
+    zeros = np.zeros( 10000 ) 
+    rate  = 5000                  
     #Testing values that came from Praat for each signal, using the standard values
     # double check these values later using timestep=0 (the default for get_F_0)                    
     params = [ ( wave1, rate1, { 'accurate'  : False, 'min_pitch' : 75 }, 229.862 ),
@@ -40,7 +41,8 @@ def test_get_F_0():
                ( wave1, rate1, { 'accurate'  : True,  'min_pitch' : 75 }, 229.631 ),
                ( wave2, rate2, { 'accurate'  : True,  'min_pitch' : 75 }, 347.990 ),
                ( wave3, rate3, { 'accurate'  : True,  'min_pitch' : 75 }, 182.539 ),
-               ( wave4, rate4, { 'accurate'  : True,  'min_pitch' : 75 }, 229.192 )]
+               ( wave4, rate4, { 'accurate'  : True,  'min_pitch' : 75 }, 229.192 ),
+               ( zeros, rate,  { 'accurate'  : True,  'min_pitch' : 75 },   0.0   )]
     
     for param in params:
         wave, rate, kwargs, true_val = param
