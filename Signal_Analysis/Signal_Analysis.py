@@ -89,7 +89,10 @@ def get_F_0( signal, rate, time_step = 0.0, min_pitch = 75, max_pitch = 600, max
     
     total_time = len( signal ) / float( rate )
     tot_time_arr = np.linspace( 0, total_time, len( signal ) )
-    
+    max_place_possible  = 1.0 / min_pitch
+    min_place_possible  = 1.0 / max_pitch
+    #to silence formants
+    min_place_possible2 = 0.5 / max_pitch
     #segmenting signal into windows that contain 3 periods of minimum pitch
     if accurate: periods_per_window = 6.0
     else:        periods_per_window = 3.0
@@ -187,11 +190,6 @@ def get_F_0( signal, rate, time_step = 0.0, min_pitch = 75, max_pitch = 600, max
             peaks = pu.indexes( r_x , thres = 0)
             
             maxima_values, maxima_places = r_x[ peaks ], time_array[ peaks ]
-            
-            max_place_possible  = 1.0 / min_pitch
-            min_place_possible  = 1.0 / max_pitch
-            #to silence formants
-            min_place_possible2 = 0.5 / max_pitch
             
             maxima_places = maxima_places[ maxima_values > 0.5 * voicing_threshold ]
             maxima_values = maxima_values[ maxima_values > 0.5 * voicing_threshold ]  
