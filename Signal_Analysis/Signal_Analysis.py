@@ -1,28 +1,5 @@
 import numpy as np
 import peakutils as pu
-from matplotlib import pyplot as plt
-
-def sinc_interp( x, s, u ):
-    """
-    This function uses sinc interpolation to upsample x.
-    
-    Args:
-        x (numpy.ndarray): an array of the signal to be interpolated
-        s (numpy.ndarray): an array of the sampled domain
-        u (numpy.ndarray): an array of the new sampled domain
-        
-    Returns:
-        y (numpy.ndarray): an array of the interpolated signal.
-        
-    """
-    #Find the period    
-    T = s[ 1 ] - s[ 0 ]
-    #This creates an array of values to use in our interpolation
-    sincM = np.tile( u, ( len( s ), 1 ) ) - np.tile( s[ :, np.newaxis ], ( 1, len( u ) ) )
-    #This calculates interpolated array
-    y = np.dot( x, np.sinc( sincM / T ) )
-    return y
-
 def get_F_0( signal, rate, time_step = 0.0, min_pitch = 75, max_pitch = 600, max_num_cands = 15,
             silence_threshold = .03, voicing_threshold = .45, octave_cost = .01, octave_jump_cost = .35,
             voiced_unvoiced_cost = .14, accurate = False, pulse = False ):
@@ -106,25 +83,33 @@ def get_F_0( signal, rate, time_step = 0.0, min_pitch = 75, max_pitch = 600, max
         rate, wave = wav.read( 'example_audio_file.wav' )
         sig.get_F_0( wave, rate )
     """
+    if max_num_cands < max_pitch/min_pitch: max_num_cands = int(max_pitch/min_pitch)
+    
     total_time = len( signal ) / float( rate )
     tot_time_arr = np.linspace( 0, total_time, len( signal ) )
     
-
+    #segmenting signal into windows that contain 3 periods of minimum pitch
+    if accurate: periods_per_window = 6.0
+    else:        periods_per_window = 3.0
     
+    #degree of oversampling is 4    
+    if time_step <= 0: time_step = ( periods_per_window / 4.0 ) / min_pitch
+    window_len = periods_per_window / min_pitch
+    #correcting for time_step       
+    octave_jump_cost     *= .01 / time_step
+    voiced_unvoiced_cost *= .01 / time_step 
     Nyquist_Frequency = rate /  2.0
-    global_peak = max( abs( signal ) )
     upper_bound = .95 * Nyquist_Frequency
     initial_len = len( signal )
     zeros_pad = 2 ** ( int( np.log2( len( signal ) ) ) + 1 ) - len( signal )
     signal = np.hstack( ( signal, np.zeros( zeros_pad ) ) )
     fft_signal = np.fft.fft( signal )
-    fft_signal[ int( upper_bound ) : -int( upper_bound ) ] = 0
+    fft_signal[ int( upper_bound ) : -int(upper_bound)] = 0
     sig = np.fft.ifft( fft_signal )
     sig = sig[ :initial_len ].real
-             
- 
-    
     #checking to make sure values are valid
+    if min_pitch < periods_per_window / total_time:
+        raise ValueError( "To analyse this sound min_pitch must not be less than ", str(periods_per_window / total_time ) )
     if Nyquist_Frequency < max_pitch:
         raise ValueError( "The maximum pitch cannot be greater than the Nyquist Frequency." )
     if max_num_cands <2 :
@@ -138,105 +123,72 @@ def get_F_0( signal, rate, time_step = 0.0, min_pitch = 75, max_pitch = 600, max
     if silence_threshold < 0 or silence_threshold > 1:
         raise ValueError( "silence_threshold must be between 0 and 1." )
         
-    #segmenting signal into windows that contain 3 periods of minimum pitch
-    if accurate:
-        periods_per_window = 6.0
-    else:
-        periods_per_window = 3.0
-        
-    if time_step == 0:
-        #degree of oversampling is 4
-        time_step = ( periods_per_window / 4.0 ) / min_pitch
-    
-    window_len = periods_per_window / min_pitch
-    
-    #correcting for time_step       
-    octave_jump_cost     *= .01 / time_step
-    voiced_unvoiced_cost *= .01 / time_step 
-
     #Segmenting signal
     frame_len = int( window_len * rate + .5 )
     time_len  = int( time_step  * rate + .5 )
-     
-    
+        
     #initializing list of candidates for F_0, and their strengths
-    best_cands = []
-    strengths  = []
-    if pulse:
-        time_vals = []
-    
-    start_index = 0
-    global_peak = 0
-    
-    while start_index < len( sig ) - frame_len :
-        segment = sig[ start_index : start_index + frame_len ]  
-        local_mean = segment.mean()
-        value = max( abs( segment - local_mean ) )  
-        if value > global_peak: global_peak = value
-        start_index += time_len
+    best_cands, strengths = [], []
+    if pulse: time_vals = []
+    global_peak = max( abs( sig - sig.mean() ) )
     
     start_index = 0
     while start_index < len( sig ) - frame_len :
-        
         segment = sig[ start_index : start_index + frame_len ]
-        
-        if pulse:
-            start_time = tot_time_arr[ start_index +             int( 0.5 * time_len ) ]
-            stop_time  = tot_time_arr[ start_index + frame_len - int( 0.5 * time_len ) ]
-            time_vals.append( ( start_time, stop_time ) )
-
         if accurate:
             t = np.linspace( 0, window_len, len( segment ) )
             window = ( np.e ** ( -12 * ( t / window_len - .5 ) ** 2 ) - np.e ** -12 ) / ( 1 - np.e ** -12 )
-        else:
-            window = np.hanning( len( segment ) )
+            interpolation_depth = 0.25
+        else: 
+            window = np.hanning( len( segment ) )    
+            interpolation_depth = 0.50
+        
+        if pulse:
+            start_time = tot_time_arr[ start_index +             int( 0.25 * time_len ) ]
+            stop_time  = tot_time_arr[ start_index + frame_len - int( 0.25 * time_len ) ]
+            time_vals.append( ( start_time, stop_time ) )
             
         longest_period_index = int( rate / min_pitch )
-        half_period_index = int( longest_period_index / 2.0 )
+        half_period_index = int( longest_period_index / 2.0 + 1 )
         
-        period_cushion      = sig[ max( 0, start_index - longest_period_index ) : 
-                                   min( len( sig ) - 1, start_index + frame_len + longest_period_index ) ]
-        half_period_cushion = sig[ max( 0, start_index - half_period_index    ) :
-                                   min( len( sig ) - 1, start_index + frame_len + half_period_index    ) ]
-        
+        period_cushion      = segment[    half_period_index  : - half_period_index   ]  
+
         local_mean = period_cushion.mean() 
         segment = segment - local_mean
         segment *= window
-        local_peak = max( abs( ( half_period_cushion - local_mean ) * np.hanning( len( half_period_cushion ) ) ) )
+        half_period_cushion = segment[ longest_period_index  : -longest_period_index ]
+        local_peak = max( abs( half_period_cushion ) )
         intensity = local_peak / global_peak
         
         if local_peak == 0:
             #shortcut -> complete silence only candidate is silent candidate
             best_cands.append( [ np.inf ] )
             strengths.append( [ voicing_threshold + 2 ] )
-        
+            start_index += time_len
         else:
             #calculating autocorrelation, based off steps 3.2-3.10
+         
             N = len( segment )
-            x = np.hstack( ( segment, np.zeros( int( N / 2 ) ) ) )
-            x = np.hstack( ( x, np.zeros( 2 ** ( int( np.log2( N ) + 1 ) ) - N ) ) )            
-            x_fft = np.fft.fft( x )
+            nsampFFT = 2 ** int( np.log2( ( 1.0 + interpolation_depth ) * N + 1 ) )
+            window  = np.hstack( (   window, np.zeros( nsampFFT - N ) ) ) 
+            segment = np.hstack( (  segment, np.zeros( nsampFFT - N ) ) )
+            x_fft = np.fft.fft( segment )
             r_a = np.real( np.fft.fft( x_fft * np.conjugate( x_fft ) ) )
-            r_a = r_a[ :N ]
-            
-            N = len( window )
-            x = np.hstack( ( window, np.zeros( int( N / 2 ) ) ) )
-            x = np.hstack( ( x, np.zeros( 2 ** ( int( np.log2( N ) + 1 ) ) - N ) ) )            
-            x_fft = np.fft.fft( x )
+            r_a = r_a[ : N ]
+                       
+            x_fft = np.fft.fft( window )
             r_w = np.real( np.fft.fft( x_fft * np.conjugate( x_fft ) ) )
-            r_w = r_w[ :N ]
+            r_w = r_w[ : N ]
             r_x = r_a / r_w
             r_x /= r_x[ 0 ]
-            
+
             #eliminating frequencies below min_pitch
             r_x = r_x[ : int( len( r_x ) / periods_per_window ) ]
             #creating an array of the points in time corresponding to our sampled autocorrelation
             #of the signal (r_x)
-            time_array = np.linspace( 0, window_len / periods_per_window, len( r_x ) )
-            #instead of peakutils
-            dy = np.diff( r_x )
-            peaks = np.where((np.hstack([dy, 0.]) < 0.)
-                           & (np.hstack([0., dy]) > 0.) )
+            time_array = np.linspace( 0 , window_len /periods_per_window, len( r_x ) )
+            peaks = pu.indexes( r_x , thres = 0)
+            
             maxima_values, maxima_places = r_x[ peaks ], time_array[ peaks ]
             
             max_place_possible  = 1.0 / min_pitch
@@ -278,8 +230,7 @@ def get_F_0( signal, rate, time_step = 0.0, min_pitch = 75, max_pitch = 600, max
             start_index += time_len
             
     #Calculates smallest costing path through list of candidates (forwards), and returns path.
-    best_total_cost = -np.inf
-    best_total_path = []
+    best_total_cost, best_total_path = -np.inf, []
     #for each initial candidate find the path of least cost, then of those paths, choose the one 
     #with the least cost.
     for a in range( len( best_cands[ 0 ] ) ):
@@ -325,8 +276,7 @@ def get_F_0( signal, rate, time_step = 0.0, min_pitch = 75, max_pitch = 600, max
     
     #Calculates smallest costing path through list of candidates (backwards), and returns path.
     
-    best_total_cost = -np.inf
-    best_total_path2 = []
+    best_total_cost, best_total_path2 = -np.inf, []
     #for each initial candidate find the path of least cost, then of those paths, choose the one 
     #with the least cost.
     for a in range( len( best_cands[ -1 ] ) ):
@@ -384,31 +334,15 @@ def get_F_0( signal, rate, time_step = 0.0, min_pitch = 75, max_pitch = 600, max
     for i in range( len( f_0 ) ):
         #if f_0 is voiceless assign occurance of peak to inf
         if f_0[ i ] > max_place_possible or f_0[ i ] < min_place_possible : f_0[ i ] = np.inf
-               
-
-    plt.plot(np.linspace(0,len(sig)/rate,len(f_0)),1/f_0,label='forward & backward')
-    plt.legend()
-    plt.show()
-    
+              
     f_0 = f_0[ f_0 < np.inf ]
-    if pulse:
-        return f_0, time_vals, signal, global_peak
-    
-    if len( f_0 ) == 0:
-        return 0
-    else:
-        f_0 = 1.0 / f_0
-        return np.median( f_0 )
-    
-    
-    
-    
-    
-    
-    
-    
+    if pulse:               return f_0, time_vals, signal, global_peak
+    if len( f_0 ) == 0:     return 0
+    else:                   return np.median( 1.0 / f_0 )   
 
-def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .1, periods_per_window = 4.5):
+
+def get_HNR( signal, rate, time_step = 0, min_pitch = 75, silence_threshold = .1, 
+             periods_per_window = 4.5):
     """
     Compute Fundamental Frequency (F_0).
     Algorithm filters out values higher than the Nyquist Frequency, then segments the signal 
@@ -423,7 +357,11 @@ def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .
         signal (numpy.ndarray): The signal the fundamental frequency will be calculated from.
         
         rate (int): the rate per seconds that the signal was sampled at.
-        
+
+        time_step (float): (default value: 0.0) the measurement interval (frame duration), in seconds. 
+        If you supply 0, Praat will use a time step of 0.75 / (min_pitch), e.g. 0.01 seconds if the 
+        minimum pitch is 75 Hz; in this example, algorithm computes 100 pitch values per second.
+
         min_pitch (float): (default value: 75) minimum value to be returned as pitch, cannot be 
         less than or equal to zero
                   
@@ -450,15 +388,12 @@ def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .
         rate, wave = wav.read( 'example_audio_file.wav' )
         sig.get_F_0( wave, rate )
     """
-    
-    
-    
     #checking to make sure values are valid
     if min_pitch <= 0:
         raise ValueError( "The minimum pitch cannot be equal to or less than zero." )
     if silence_threshold < 0 or silence_threshold > 1:
         raise ValueError( "silence_threshold must be between 0 and 1." )
-        
+    if time_step <= 0: time_step = ( periods_per_window / 4.0 ) / min_pitch        
     #filtering by Nyquist Frequency and segmenting signal 
     Nyquist_Frequency = rate / 2
     max_pitch = Nyquist_Frequency
@@ -477,7 +412,6 @@ def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .
     
     window_len = periods_per_window / float( min_pitch )
     
-
     #Segmenting signal
     frame_len = int( window_len * rate )
     time_len = int( time_step * rate )
@@ -538,7 +472,6 @@ def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .
         maxima_values = np.hstack( ( maxima_values, 1.0 / maxima_values ) )
         maxima_values = maxima_values[ maxima_values < 1.0 ]
         
-
         #eq. 23 & 24 with octave_cost, and voicing_threshold set to zero
         if len( maxima_values ) > 0:
             strengths = [ max( maxima_values ), max( 0, 2 - ( ( local_peak / global_peak ) / ( silence_threshold ) ) ) ]
@@ -560,10 +493,8 @@ def get_HNR( signal, rate, time_step =.01, min_pitch = 75, silence_threshold = .
     return best_candidate
     
 
-
-
-    
-def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600, include_maxima = False, include_minima = True ):
+def get_Pulses( signal, rate, min_pitch = 75, max_pitch = 600, include_maxima = False, 
+                include_minima = True ):
     """
     This algorithm examines voiced intervals of a signal, and creates a list of points that correspond
     to the sequence of glottal closures in vocal-fold vibration.
@@ -598,13 +529,14 @@ def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600, include_maxima = F
     
     if not include_maxima and not include_minima:
         raise ValueError( "At least one of include_minima or include_maxima must set to True." )
+        
     period, intervals, signal, global_peak = get_F_0( signal, rate, min_pitch = min_pitch, 
                                         max_pitch = max_pitch, pulse = True)
-    points=[]
+    
+    points, voiced_intervals =   [], []
+    f_times, v_times = np.array( [] ), np.array( [] )
     total_time = np.linspace( 0, len( signal ) / float( rate ), len( signal ) )
-    voiced_intervals = []
-    f_times = np.array([])
-    v_times = np.array([])
+    
     for interval in intervals:
         start, stop = interval
         #finding all midpoints for each interval
@@ -614,17 +546,20 @@ def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600, include_maxima = F
         start, stop = intervals[ i ]
         int_start, prev_stop = intervals[ i ]
         while start <= prev_stop and i < len( intervals ) - 1 :
-            prev_start,prev_stop = intervals[ i ]
+            prev_start, prev_stop = intervals[ i ]
             i += 1
             start, stop = intervals[ i ]
         if i == len( intervals ) - 1:
-            v_times = np.hstack( ( v_times, np.linspace( int_start, stop, int( ( stop - int_start ) * rate ) ) ) )
+            v_times = np.hstack( ( v_times, 
+                                  np.linspace( int_start, stop,      int( ( stop      - int_start ) * rate ) ) ) )
             voiced_intervals.append( ( int_start, stop ) )
         else:
-            v_times = np.hstack( ( v_times, np.linspace( int_start, prev_stop, int( ( prev_stop - int_start ) * rate ) ) ) )	
+            v_times = np.hstack( ( v_times, 
+                                  np.linspace( int_start, prev_stop, int( ( prev_stop - int_start ) * rate ) ) ) )	
             voiced_intervals.append( ( int_start, prev_stop ) )
-    #print(voiced_intervals)
+    
     periods_interp = np.interp( v_times, f_times, period )
+    
     for interval in voiced_intervals:
         start, stop = interval
         midpoint = ( start + stop ) / 2.0
@@ -637,20 +572,18 @@ def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600, include_maxima = F
             frame_start_index = np.argmin( abs( total_time - frame_start ) )
             frame_stop_index  = np.argmin( abs( total_time - frame_stop  ) )
             frame = signal[ frame_start_index : frame_stop_index ]
-            if include_maxima and include_minima:
-                p_index = np.argmax( abs( frame ) ) + frame_start_index
-            elif include_maxima:
-                p_index = np.argmax( frame ) + frame_start_index
-            else:
-                p_index = np.argmin( frame ) + frame_start_index 
-            if abs( signal[ p_index ] ) > .02333 * global_peak:
-                points.append( total_time[ p_index ] )
+            
+            if include_maxima and include_minima: p_index = np.argmax( abs( frame ) ) + frame_start_index
+            elif include_maxima:                  p_index = np.argmax( frame )        + frame_start_index
+            else:                                 p_index = np.argmin( frame )        + frame_start_index 
+                                                                     
+            if abs( signal[ p_index ] ) > .02333 * global_peak: points.append( total_time[ p_index ] )
                 
             t = total_time[ p_index ]
             t_index = np.argmin( abs( v_times - t ) )
             T_0 = periods_interp[ t_index ]
             frame_start = t - 1.25 * T_0
-            frame_stop  = t - 0.8 * T_0
+            frame_stop  = t - 0.80 * T_0
             
         T_0 = periods_interp[ midpoint_index ]    
         frame_start = midpoint - T_0
@@ -660,24 +593,24 @@ def get_Pulses(signal, rate, min_pitch = 75, max_pitch = 600, include_maxima = F
             frame_start_index = np.argmin( abs( total_time - frame_start ) )
             frame_stop_index  = np.argmin( abs( total_time - frame_stop  ) )
             frame = signal[ frame_start_index : frame_stop_index ]
-            if include_maxima and include_minima:
-                p_index = np.argmax( abs( frame ) ) + frame_start_index
-            elif include_maxima:
-                p_index = np.argmax( frame ) + frame_start_index
-            else:
-                p_index = np.argmin( frame ) + frame_start_index 
-            if abs( signal[ p_index ] ) > .02333 * global_peak:
-                points.append( total_time[ p_index ] )              
+            
+            if include_maxima and include_minima: p_index = np.argmax( abs( frame ) ) + frame_start_index
+            elif include_maxima:                  p_index = np.argmax( frame )        + frame_start_index
+            else:                                 p_index = np.argmin( frame )        + frame_start_index 
+                                                                     
+            if abs( signal[ p_index ] ) > .02333 * global_peak: points.append( total_time[ p_index ] )  
+            
             t = total_time[ p_index ]
             t_index = np.argmin( abs( v_times - t ) )
             T_0 = periods_interp[ t_index ]
-            frame_start = t + 0.8 * T_0
+            frame_start = t + 0.80 * T_0
             frame_stop  = t + 1.25 * T_0 
             
     return np.array( sorted( list( set( points ) ) ) )
 
 
-def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_period_factor = 1.3, pulses = None ):
+def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_period_factor = 1.3, 
+                pulses = None ):
     """
     Compute Jitter, random pertubations in period length.
     Algorithm filters out values higher than the Nyquist Frequency, then segments the signal
@@ -724,28 +657,27 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
         sig.get_Jitter( wave, rate )
     
     """
-    if pulses is None:
-        pulses = get_Pulses( signal, rate )
+    if pulses is None: pulses = get_Pulses( signal, rate )
     periods = np.diff( pulses )
     
     min_period_factor = 1.0 / max_period_factor
-    period_variation = []
     
     #finding local, absolute
     #described at: http://www.fon.hum.uva.nl/praat/manual/PointProcess__Get_jitter__local__absolute____.html
+    sum_total = 0
+    num_periods = len( pulses ) - 1
     for i in range( len( periods ) - 1 ):
-        p1 = periods[ i ]
-        p2 = periods[ i + 1 ]
+        p1, p2 = periods[ i ], periods[ i + 1 ]
+        
         ratio = p2 / p1
-        if (ratio < max_period_factor and 
-            ratio > min_period_factor and 
-            p1 < period_ceiling and
-            p2 < period_ceiling and
-            p1 > period_floor and
-            p2 > period_floor ):
-                period_variation.append( abs( periods[ i + 1 ] - periods[ i ] ) )
+        if (ratio < max_period_factor and ratio > min_period_factor and 
+            p1    < period_ceiling    and p1    > period_floor      and
+            p2    < period_ceiling    and p2    > period_floor      ):
+            
+                sum_total += abs( periods[ i + 1 ] - periods[ i ] ) 
+        else: num_periods -= 1
                 
-    absolute = np.mean( period_variation )
+    absolute = sum_total / ( num_periods - 1 )
     
     #finding local, 
     #described at: http://www.fon.hum.uva.nl/praat/manual/PointProcess__Get_jitter__local____.html
@@ -754,22 +686,20 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
     
     #duplicating edges so there is no need to test edge cases
     periods = np.hstack(( periods[ 0 ], periods, periods[ -1 ] ))
+    
     for i in range( len( periods ) - 2):
-        p1 = periods[ i ]
-        p2 = periods[ i + 1 ]
-        p3 = periods[ i + 2 ]
+        p1, p2, p3 = periods[ i ], periods[ i + 1 ], periods[ i + 2 ]
+        
         ratio_1, ratio_2 = p1 / p2, p2 / p3
-        if (ratio_1 < max_period_factor and 
-            ratio_1 > min_period_factor and 
-            ratio_2 < max_period_factor and 
-            ratio_2 > min_period_factor and 
-            p2 < period_ceiling and
-            p2 > period_floor ):
+        if (ratio_1 < max_period_factor and ratio_1 > min_period_factor and 
+            ratio_2 < max_period_factor and ratio_2 > min_period_factor and 
+            p2      < period_ceiling    and p2      > period_floor      ):
             
             sum_total += p2
             num_periods += 1
+            
     periods = periods[ 1 : -1 ]
-    avg_period = sum_total / num_periods 
+    avg_period = sum_total / ( num_periods ) 
     relative = absolute / avg_period
     
     #finding rap
@@ -777,21 +707,15 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
     sum_total = 0
     num_periods = 0
     
-    for i in range( len( periods ) - 2):
-        p1 = periods[ i ]
-        p2 = periods[ i + 1 ]
-        p3 = periods[ i + 2 ]
+    for i in range( len( periods ) - 2 ):
+        p1, p2, p3 = periods[ i ], periods[ i + 1 ], periods[ i + 2 ]
+        
         ratio_1, ratio_2 = p1 / p2, p2 / p3
-        if (ratio_1 < max_period_factor and 
-            ratio_1 > min_period_factor and 
-            ratio_2 < max_period_factor and 
-            ratio_2 > min_period_factor and 
-            p1 < period_ceiling and
-            p2 < period_ceiling and
-            p3 < period_ceiling and
-            p1 > period_floor and
-            p2 > period_floor and
-            p3 > period_floor ):
+        if (ratio_1 < max_period_factor and ratio_1 > min_period_factor and 
+            ratio_2 < max_period_factor and ratio_2 > min_period_factor and 
+            p1      < period_ceiling    and p1      > period_floor      and
+            p2      < period_ceiling    and p2      > period_floor      and
+            p3      < period_ceiling    and p3      > period_floor      ):
             
             sum_total += abs( p2 - ( p1 + p2 + p3 ) / 3.0 )
             num_periods += 1
@@ -802,31 +726,19 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02, max_pe
     sum_total = 0
     num_periods = 0
     
-    for i in range( len( periods ) - 4):
-        p1 = periods[ i ]
-        p2 = periods[ i + 1 ]
-        p3 = periods[ i + 2 ]
-        p4 = periods[ i + 3 ]
-        p5 = periods[ i + 4 ]
+    for i in range( len( periods ) - 4 ):
+        p1, p2, p3, p4, p5 = periods[ i ], periods[ i + 1 ], periods[ i + 2 ], periods[ i + 3 ], periods[ i + 4 ]
+        
         ratio_1, ratio_2, ratio_3, ratio_4 = p1 / p2, p2 / p3, p3 / p4, p4 / p5
-        if (ratio_1 < max_period_factor and 
-            ratio_1 > min_period_factor and 
-            ratio_2 < max_period_factor and 
-            ratio_2 > min_period_factor and 
-            ratio_3 < max_period_factor and 
-            ratio_3 > min_period_factor and 
-            ratio_4 < max_period_factor and 
-            ratio_4 > min_period_factor and 
-            p1 < period_ceiling and
-            p2 < period_ceiling and
-            p3 < period_ceiling and
-            p4 < period_ceiling and
-            p5 < period_ceiling and
-            p1 > period_floor and
-            p2 > period_floor and
-            p3 > period_floor and
-            p4 > period_floor and
-            p5 > period_floor):
+        if (ratio_1 < max_period_factor and ratio_1 > min_period_factor and 
+            ratio_2 < max_period_factor and ratio_2 > min_period_factor and 
+            ratio_3 < max_period_factor and ratio_3 > min_period_factor and 
+            ratio_4 < max_period_factor and ratio_4 > min_period_factor and 
+            p1      < period_ceiling    and p1      > period_floor      and
+            p2      < period_ceiling    and p2      > period_floor      and
+            p3      < period_ceiling    and p3      > period_floor      and
+            p4      < period_ceiling    and p4      > period_floor      and
+            p5      < period_ceiling    and p5      > period_floor      ):
             
             sum_total += abs( p3 - ( p1 + p2 + p3 +p4 + p5 ) / 5.0 )
             num_periods += 1

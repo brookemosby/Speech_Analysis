@@ -32,26 +32,21 @@ def test_get_F_0():
         assert excinfo.value.args[ 0 ] == message
 
                       
-    #Testing values that came from Praat for each signal, using the standard values (with the exception
-    #that time_step is set equal to .04 in Praat )                      
-    params = [ ( wave1, rate1, { 'accurate'  : False, 'min_pitch' : 75 }, 228.892 ),
-               ( wave2, rate2, { 'accurate'  : False, 'min_pitch' : 75 }, 349.444 ),
-               ( wave3, rate3, { 'accurate'  : False, 'min_pitch' : 75 }, 182.571 ),
-               ( wave4, rate4, { 'accurate'  : False, 'min_pitch' : 75 }, 229.355 ),
-               ( wave1, rate1, { 'accurate'  : True,  'min_pitch' : 75 }, 229.936 ),
-               ( wave2, rate2, { 'accurate'  : True,  'min_pitch' : 75 }, 345.517 ),
-               ( wave3, rate3, { 'accurate'  : True,  'min_pitch' : 75 }, 183.453 ),
-               ( wave4, rate4, { 'accurate'  : True,  'min_pitch' : 75 }, 229.729 ),
-               ( wave1, rate1, { 'time_step' : 0,     'min_pitch' : 75 }, 229.862 ),
-               ( wave2, rate2, { 'time_step' : 0,     'min_pitch' : 75 }, 348.380 ),
-               ( wave3, rate3, { 'time_step' : 0,     'min_pitch' : 75 }, 182.465 ),
-               ( wave4, rate4, { 'time_step' : 0,     'min_pitch' : 75 }, 229.198 ),
-               ( wave1, rate1, { 'accurate'  : False, 'min_pitch' : 550 },  0.0   )]
+    #Testing values that came from Praat for each signal, using the standard values
+    # double check these values later using timestep=0 (the default for get_F_0)                    
+    params = [ ( wave1, rate1, { 'accurate'  : False, 'min_pitch' : 75 }, 229.862 ),
+               ( wave2, rate2, { 'accurate'  : False, 'min_pitch' : 75 }, 348.380 ),
+               ( wave3, rate3, { 'accurate'  : False, 'min_pitch' : 75 }, 182.465 ),
+               ( wave4, rate4, { 'accurate'  : False, 'min_pitch' : 75 }, 229.198 ),
+               ( wave1, rate1, { 'accurate'  : True,  'min_pitch' : 75 }, 229.631 ),
+               ( wave2, rate2, { 'accurate'  : True,  'min_pitch' : 75 }, 347.990 ),
+               ( wave3, rate3, { 'accurate'  : True,  'min_pitch' : 75 }, 182.539 ),
+               ( wave4, rate4, { 'accurate'  : True,  'min_pitch' : 75 }, 229.192 )]
     
     for param in params:
         wave, rate, kwargs, true_val = param
         est_val = sig.get_F_0( wave, rate, **kwargs )
-        assert abs( est_val - true_val ) < true_val * .02, 'Estimated frequency not within allotted range.'
+        assert abs( est_val - true_val ) < 3, 'Estimated frequency not within allotted range.'
 def test_get_HNR():
     #Here we test all the exceptions
     with pytest.raises( Exception ) as excinfo:
@@ -64,16 +59,16 @@ def test_get_HNR():
     assert excinfo.value.args[ 0 ] == "silence_threshold must be between 0 and 1."
     
     #Testing values that came from Praat for each signal, using the standard values 
-    params = [ ( wave1, rate1, 13.083 ),
-               ( wave2, rate2,  9.628 ),
-               ( wave3, rate3, 17.927 ),
-               ( wave4, rate4, 16.206 ),
+    params = [ ( wave1, rate1, 13.102 ),
+               ( wave2, rate2,  9.660 ),
+               ( wave3, rate3, 17.940 ),
+               ( wave4, rate4, 16.254 ),
                ( np.zeros(500), 500, 0 )]
                            
     for param in params:
         wave, rate, true_val = param
         est_val = sig.get_HNR( wave, rate )
-        assert abs( est_val - true_val ) < .75, 'Estimated HNR not within allotted range.'
+        assert abs( est_val - true_val ) < .4, 'Estimated HNR not within allotted range.'
         
 def test_get_Pulses():
     with pytest.raises( Exception ) as excinfo:
@@ -115,15 +110,19 @@ def test_get_Jitter():
     #Testing values that came from Praat for each signal, by going from sound-> PointProcess (peaks)
     #and using the jitter default values
     params = [ ( wave1, rate1, np.array( [ 0.046211, 0.000207, 0.023501, 0.028171, 0.070503 ] ) ),
+               ( wave4, rate4, np.array( [ 0.034202, 0.000143, 0.019735, 0.018335, 0.059206 ] ) ),
                ( wave2, rate2, np.array( [ 0.049284, 0.000148, 0.026462, 0.025010, 0.079386 ] ) ),
-               ( wave3, rate3, np.array( [ 0.027097, 0.000141, 0.014425, 0.013832, 0.043274 ] ) ),
-               ( wave4, rate4, np.array( [ 0.034202, 0.000143, 0.019735, 0.018335, 0.059206 ] ) ) ] 
+               ( wave3, rate3, np.array( [ 0.027097, 0.000141, 0.014425, 0.013832, 0.043274 ] ) )] 
+    #4.2% relative error tolerance
+    error = 0.042
     for param in params:
+        
         wave, rate, true_val = param
+        print(rate)
         est_val = sig.get_Jitter( wave, rate )
-        #we allow a 10.5% error tolerance
-        assert abs( est_val[ 'local' ] -            true_val[ 0 ] )  < .11 * true_val[ 0 ]
-        assert abs( est_val[ 'local, absolute' ] -  true_val[ 1 ] )  < .11 * true_val[ 1 ]
-        assert abs( est_val[ 'rap' ] -              true_val[ 2 ] )  < .11 * true_val[ 2 ]
-        assert abs( est_val[ 'ppq5' ] -             true_val[ 3 ] )  < .11 * true_val[ 3 ]
-        assert abs( est_val[ 'ddp' ] -              true_val[ 4 ] )  < .11 * true_val[ 4 ]
+
+        assert abs( est_val[ 'local'           ] - true_val[ 0 ] )  < error * true_val[ 0 ]
+        assert abs( est_val[ 'local, absolute' ] - true_val[ 1 ] )  < error * true_val[ 1 ]
+        assert abs( est_val[ 'rap'             ] - true_val[ 2 ] )  < error * true_val[ 2 ]
+        assert abs( est_val[ 'ppq5'            ] - true_val[ 3 ] )  < error * true_val[ 3 ]
+        assert abs( est_val[ 'ddp'             ] - true_val[ 4 ] )  < error * true_val[ 4 ]
