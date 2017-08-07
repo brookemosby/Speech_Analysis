@@ -110,8 +110,6 @@ def get_F_0( signal, rate, time_step = 0.0, min_pitch = 75, max_pitch = 600, max
     sig = np.fft.ifft( fft_signal )
     sig = sig[ :initial_len ].real
     #checking to make sure values are valid
-    if min_pitch < periods_per_window / total_time:
-        raise ValueError( "To analyse this sound min_pitch must not be less than ", str(periods_per_window / total_time ) )
     if Nyquist_Frequency < max_pitch:
         raise ValueError( "The maximum pitch cannot be greater than the Nyquist Frequency." )
     if octave_cost < 0 or octave_cost > 1:
