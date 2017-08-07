@@ -83,6 +83,8 @@ def get_F_0( signal, rate, time_step = 0.0, min_pitch = 75, max_pitch = 600, max
         rate, wave = wav.read( 'example_audio_file.wav' )
         sig.get_F_0( wave, rate )
     """
+    if min_pitch <= 0:
+        raise ValueError( "The minimum pitch cannot be equal or less than zero." )
     if max_num_cands < max_pitch/min_pitch: max_num_cands = int(max_pitch/min_pitch)
     
     total_time = len( signal ) / float( rate )
@@ -118,8 +120,7 @@ def get_F_0( signal, rate, time_step = 0.0, min_pitch = 75, max_pitch = 600, max
         raise ValueError( "octave_cost must be between 0 and 1." )            
     if voicing_threshold < 0 or voicing_threshold> 1:
         raise ValueError( "voicing_threshold must be between 0 and 1." ) 
-    if min_pitch <= 0:
-        raise ValueError( "The minimum pitch cannot be equal or less than zero." )
+
     if silence_threshold < 0 or silence_threshold > 1:
         raise ValueError( "silence_threshold must be between 0 and 1." )
         
