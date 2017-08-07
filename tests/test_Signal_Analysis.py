@@ -19,7 +19,6 @@ def test_get_F_0():
     #Here we test all the exceptions using wave1 & rate1 created above 
     params = [ ( "The maximum pitch cannot be greater than the Nyquist Frequency.",   { 'max_pitch'         : 200000 } ),
                ( "The minimum pitch cannot be equal or less than zero.",              { 'min_pitch'         : 0 } ),
-               ( "The minimum number of candidates is 2.",                            { 'max_num_cands': 1 } ),
                ( "octave_cost must be between 0 and 1.",                              { 'octave_cost'       : 3 } ),
                ( "silence_threshold must be between 0 and 1.",                        { 'silence_threshold' : 3 } ),
                ( "voicing_threshold must be between 0 and 1.",                        { 'voicing_threshold' : 3 } ) ]

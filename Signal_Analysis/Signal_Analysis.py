@@ -114,8 +114,6 @@ def get_F_0( signal, rate, time_step = 0.0, min_pitch = 75, max_pitch = 600, max
         raise ValueError( "To analyse this sound min_pitch must not be less than ", str(periods_per_window / total_time ) )
     if Nyquist_Frequency < max_pitch:
         raise ValueError( "The maximum pitch cannot be greater than the Nyquist Frequency." )
-    if max_num_cands <2 :
-        raise ValueError( "The minimum number of candidates is 2.")
     if octave_cost < 0 or octave_cost > 1:
         raise ValueError( "octave_cost must be between 0 and 1." )            
     if voicing_threshold < 0 or voicing_threshold> 1:
