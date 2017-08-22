@@ -1,7 +1,7 @@
 from scipy.io import matlab
 import numpy as np
 import pytest
-import afx.features.signal as sig
+import Signal_Analysis.features.signal as sig
 
 
 dict1 = matlab.loadmat( 'tests/features/data/03-01-01-01-01-01-10.mat' )
