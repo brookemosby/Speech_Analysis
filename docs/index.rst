@@ -29,6 +29,7 @@ Full API documentation is hosted at `github pages`_.
 .. toctree::
    :maxdepth: 1
    
+   modules.rst
    Signal_Analysis.rst
 
 

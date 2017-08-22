@@ -1,4 +1,4 @@
-Signal_Analysis
+Project Modules
 ===============
 
 .. toctree::

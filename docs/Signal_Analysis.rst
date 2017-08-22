@@ -1,18 +1,13 @@
 Signal_Analysis package
 =======================
 
-Submodules
-----------
+Subpackages
+-----------
 
-Signal_Analysis.Signal_Analysis module
---------------------------------------
+.. toctree::
 
-.. automodule:: Signal_Analysis.Signal_Analysis
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
+    Signal_Analysis.features
+	
 Module contents
 ---------------
 
@@ -20,3 +15,5 @@ Module contents
     :members:
     :undoc-members:
     :show-inheritance:
+
+	
