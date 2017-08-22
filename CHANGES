@@ -23,3 +23,7 @@ version 0.1.12:
 	-F_0 accuracy increased to +/- 3 Hz
 version 0.1.13:
 	-Much more detailed API documetation
+version 0.1.14 - 0.1.17:
+	-attempting to fix bugs
+version 0.1.18 - 0.1.23:
+	-updating README

@@ -9,7 +9,7 @@ except ImportError:
     read_md = lambda f: open(f, 'r').read()
     
 setup( name = 'Signal_Analysis',
-      version=' 0.1.14 ',
+      version='0.1.23',
       description = 'Determines different characteristics of signals.',
       long_description = "" if not path.isfile("README.md") else read_md('README.md'),
       author = 'Brooke V Mosby',
@@ -22,7 +22,7 @@ setup( name = 'Signal_Analysis',
           "numpy",
           "peakutils"
       ],
-      packages = [ 'Signal_Analysis' ] ,
+      packages = [ 'Signal_Analysis','Signal_Analysis.features' ] ,
       include_package_data = True,
       scripts = [],
               
