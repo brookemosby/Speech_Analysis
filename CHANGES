@@ -21,3 +21,5 @@ version 0.1.11:
 version 0.1.12:
 	-Jitter accuracy increased to 96% (according to Praat values)
 	-F_0 accuracy increased to +/- 3 Hz
+version 0.1.13:
+	-Much more detailed API documetation
