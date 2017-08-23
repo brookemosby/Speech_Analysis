@@ -31,3 +31,5 @@ version 0.1.24:
 	-updated API documentation
 version 0.1.25:
 	-fixed a typo in documentation
+version 0.1.26:
+	-fixed missing code block in examples in API documentation

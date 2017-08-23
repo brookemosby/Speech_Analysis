@@ -9,7 +9,7 @@ except ImportError:
     read_md = lambda f: open(f, 'r').read()
     
 setup( name = 'Signal_Analysis',
-      version='0.1.25',
+      version='0.1.26',
       description = 'Determines different characteristics of signals.',
       long_description = "" if not path.isfile("README.md") else read_md('README.md'),
       author = 'Brooke V Mosby',

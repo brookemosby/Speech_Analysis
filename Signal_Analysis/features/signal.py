@@ -493,6 +493,7 @@ def get_HNR( signal, rate, time_step = 0, min_pitch = 75,
         The example below adjusts parameters of the function, using the same 
         synthesized signal with added noise, to demonstrate the stability of 
         the function.
+        
         >>> import numpy as np
         >>> from matplotlib import pyplot as plt
         >>> domain = np.linspace( 0, 6, 300000 )
@@ -676,6 +677,7 @@ def get_Pulses( signal, rate, min_pitch = 75, max_pitch = 600,
     Example:
         Pulses are calculated for a synthesized signal, and the variation in 
         time between each pulse is shown.
+        
         >>> import numpy as np
         >>> from matplotlib import pyplot as plt
         >>> domain = np.linspace( 0, 6, 300000 )
@@ -927,6 +929,7 @@ def get_Jitter( signal, rate, period_floor = .0001, period_ceiling = .02,
     Example:
         In the example below a synthesized signal is used to demonstrate random 
         perturbations in periods, and how get_Jitter responds.
+        
         >>> import numpy as np
         >>> domain = np.linspace( 0, 6, 300000 )
         >>> y = lambda x:( 1 - .3 * np.sin( 2 * np.pi * 140 * x ) ) * np.sin( 
